@@ -72,34 +72,43 @@ if isPlot:
     plt.imshow(imgb, cmap=cm.hot, clim=(0.0, 0.7*imga.max()))
 
 ''' ocv '''
-start_time = time.time()
-for i in range(0, N):
-    imgb = h.reconstruct_ocv(img1)
-elapsed_time = time.time() - start_time
-print(f'ocv Reconstruction time: {elapsed_time / N:5f}s ')
-if isPlot:
-    plt.figure()
+try:
+    start_time = time.time()
+    for i in range(0, N):
+        imgb = h.reconstruct_ocv(img1)
+    elapsed_time = time.time() - start_time
+    print(f'ocv Reconstruction time: {elapsed_time / N:5f}s ')
+    if isPlot:
+        plt.figure()
     plt.imshow(imgb, cmap=cm.hot, clim=(0.0, 0.7*imga.max()))
+except AssertionError as error:
+    print(error)
 
 ''' ocvU '''
-start_time = time.time()
-for i in range(0, N):
-    imgb = h.reconstruct_ocvU(img1)
-elapsed_time = time.time() - start_time
-print(f'ocvU Reconstruction time: {elapsed_time / N:5f}s ')
-if isPlot:
-    plt.figure()
-    plt.imshow(imgb.get(), cmap=cm.hot, clim=(0.0, 0.7*imga.max()))
+try:
+    start_time = time.time()
+    for i in range(0, N):
+        imgb = h.reconstruct_ocvU(img1)
+    elapsed_time = time.time() - start_time
+    print(f'ocvU Reconstruction time: {elapsed_time / N:5f}s ')
+    if isPlot:
+        plt.figure()
+        plt.imshow(imgb.get(), cmap=cm.hot, clim=(0.0, 0.7*imga.max()))
+except AssertionError as error:
+    print(error)
 
 ''' CuPy '''
-start_time = time.time()
-for i in range(0, N):
-    imgb = h.reconstruct_cupy(img1)
-elapsed_time = time.time() - start_time
-print(f'CuPy Reconstruction time: {elapsed_time / N:5f}s ')
-if isPlot:
-    plt.figure()
-    plt.imshow(imgb.get(), cmap=cm.gray)
+try:
+    start_time = time.time()
+    for i in range(0, N):
+        imgb = h.reconstruct_cupy(img1)
+    elapsed_time = time.time() - start_time
+    print(f'CuPy Reconstruction time: {elapsed_time / N:5f}s ')
+    if isPlot:
+        plt.figure()
+        plt.imshow(imgb.get(), cmap=cm.gray)
+except AssertionError as error:
+    print(error)
 
 ''' FFTW '''
 start_time = time.time()
@@ -122,34 +131,43 @@ if isPlot:
     plt.imshow(imga, cmap=cm.hot, clim=(0.0, 0.7*imga.max()))
 
 ''' ocv '''
-start_time = time.time()
-for i in range(0, 7 * N):
-    imga = h.reconstructframe_ocv(img1[i % 7, :, :], i % 7)
-elapsed_time = time.time() - start_time
-print(f'ocv Reconstruction time: {elapsed_time / (7 * N):5f}s ')
-if isPlot:
-    plt.figure()
-    plt.imshow(imga, cmap=cm.hot, clim=(0.0, 0.7*imga.max()))
+try:
+    start_time = time.time()
+    for i in range(0, 7 * N):
+        imga = h.reconstructframe_ocv(img1[i % 7, :, :], i % 7)
+    elapsed_time = time.time() - start_time
+    print(f'ocv Reconstruction time: {elapsed_time / (7 * N):5f}s ')
+    if isPlot:
+        plt.figure()
+        plt.imshow(imga, cmap=cm.hot, clim=(0.0, 0.7*imga.max()))
+except AssertionError as error:
+    print(error)
 
 ''' ocvU '''
-start_time = time.time()
-for i in range(0, 7 * N):
-    imga = h.reconstructframe_ocvU(img1[i % 7, :, :], i % 7)
-elapsed_time = time.time() - start_time
-print(f'ocvU Reconstruction time: {elapsed_time / (7 * N):5f}s ')
-if isPlot:
-    plt.figure()
-    plt.imshow(imga.get(), cmap=cm.hot, clim=(0.0, 0.7*imga.get().max()))
+try:
+    start_time = time.time()
+    for i in range(0, 7 * N):
+        imga = h.reconstructframe_ocvU(img1[i % 7, :, :], i % 7)
+    elapsed_time = time.time() - start_time
+    print(f'ocvU Reconstruction time: {elapsed_time / (7 * N):5f}s ')
+    if isPlot:
+        plt.figure()
+        plt.imshow(imga.get(), cmap=cm.hot, clim=(0.0, 0.7*imga.get().max()))
+except AssertionError as error:
+    print(error)
 
 ''' CuPy '''
-start_time = time.time()
-for i in range(0, 7 * N):
-    imga = h.reconstructframe_cupy(img1[i % 7, :, :], i % 7)
-elapsed_time = time.time() - start_time
-print(f'CuPy Reconstructframe time: {elapsed_time / (7 * N):5f}s ')
-if isPlot:
-    plt.figure()
-    plt.imshow(imga.get(), cmap=cm.hot, clim=(0.0, 0.7*imga.max()))
+try:
+    start_time = time.time()
+    for i in range(0, 7 * N):
+        imga = h.reconstructframe_cupy(img1[i % 7, :, :], i % 7)
+    elapsed_time = time.time() - start_time
+    print(f'CuPy Reconstructframe time: {elapsed_time / (7 * N):5f}s ')
+    if isPlot:
+        plt.figure()
+        plt.imshow(imga.get(), cmap=cm.hot, clim=(0.0, 0.7*imga.max()))
+except AssertionError as error:
+    print(error)
 
 ''' Read image stack'''
 filename = str("./Raw_img_stack_512_inplane.tif")
@@ -178,26 +196,45 @@ if isPlot:
     plt.figure()
     plt.imshow(imgout[20, :, :], cmap=cm.hot, clim=(0.0, 0.7*imgout[20, :, :].max()))
 
-''' Batch process GPU '''
 start_time = time.time()
-imgout = h.batchreconstructcompact_cupy(img2)
+imgoutb = h.batchreconstructcompact(img2)
 elapsed_time = time.time() - start_time
-print(f'Batch Reconstruction compact time(CuPy): {elapsed_time:5f}s ')
+print(f'Reconstruction time: {elapsed_time:5f}s ')
+
 if isPlot:
     plt.figure()
-    plt.imshow(imgout[20, :, :].get(), cmap=cm.hot, clim=(0.0, 0.7*imgout[20, :, :].max()))
+    plt.imshow(imgoutb[20, :, :], cmap=cm.hot, clim=(0.0, 0.7*imgoutb[20, :, :].max()))
+
 if isPlot:
     plt.figure()
-    plt.imshow(imgout[39, :, :].get(), cmap=cm.hot, clim=(0.0, 0.7*imgout[20, :, :].max()))
+    plt.imshow(imgoutb[20, :, :]-imgout[20, :, :], cmap=cm.hot)
+
+''' Batch process GPU compact'''
+try:
+    start_time = time.time()
+    imgout = h.batchreconstructcompact_cupy(img2)
+    elapsed_time = time.time() - start_time
+    print(f'Batch Reconstruction compact time(CuPy): {elapsed_time:5f}s ')
+    if isPlot:
+        plt.figure()
+        plt.imshow(imgout[20, :, :].get(), cmap=cm.hot, clim=(0.0, 0.7*imgout[20, :, :].max()))
+    if isPlot:
+        plt.figure()
+        plt.imshow(imgout[39, :, :].get(), cmap=cm.hot, clim=(0.0, 0.7*imgout[20, :, :].max()))
+except AssertionError as error:
+    print(error)
 
 ''' Batch process GPU '''
-start_time = time.time()
-imgout = h.batchreconstruct_cupy(img2)
-elapsed_time = time.time() - start_time
-print(f'Batch Reconstruction time(CuPy): {elapsed_time:5f}s ')
-if isPlot:
-    plt.figure()
-    plt.imshow(imgout[20, :, :].get(), cmap=cm.hot, clim=(0.0, 0.7*imgout[20, :, :].max()))
+try:
+    start_time = time.time()
+    imgout = h.batchreconstruct_cupy(img2)
+    elapsed_time = time.time() - start_time
+    print(f'Batch Reconstruction time(CuPy): {elapsed_time:5f}s ')
+    if isPlot:
+        plt.figure()
+        plt.imshow(imgout[20, :, :].get(), cmap=cm.hot, clim=(0.0, 0.7*imgout[20, :, :].max()))
+except AssertionError as error:
+    print(error)
 
 
 plt.show()

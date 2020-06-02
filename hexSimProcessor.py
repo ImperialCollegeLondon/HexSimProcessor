@@ -255,7 +255,7 @@ class hexSimProcessor:
         return fft.irfft2(fft.rfft2(img2) * self._postfilter[:, 0:self.N + 1])
 
     def reconstruct_ocv(self, img):
-        if not opencv: raise AssertionError("No opencv present")
+        assert opencv, "No opencv present"
         img2 = np.zeros((2 * self.N, 2 * self.N), dtype=np.single)
         for i in range(0, 7):
             imf = cv2.mulSpectrums(cv2.dft(img[i, :, :]), self._prefilter_ocv, 0)
@@ -268,7 +268,7 @@ class hexSimProcessor:
                         flags=cv2.DFT_SCALE | cv2.DFT_REAL_OUTPUT)
 
     def reconstruct_ocvU(self, img):
-        if not opencv: raise AssertionError("No opencv present")
+        assert opencv, "No opencv present"
         img2 = cv2.UMat((2 * self.N, 2 * self.N), s=0.0, type=cv2.CV_32FC1)
         mask = cv2.UMat((self.N // 2, self.N // 2), s=1, type=cv2.CV_8U)
         for i in range(0, 7):
@@ -293,7 +293,7 @@ class hexSimProcessor:
         return self._bigimgstoreU
 
     def reconstruct_cupy(self, img):
-        if not cupy: raise AssertionError("No cupy present")
+        assert cupy, "No CuPy present"
         self._imgstore = img
         imf = cp.fft.rfft2(cp.asarray(img)) * cp.asarray(self._prefilter[:, 0:self.N // 2 + 1])
         self._carray_cp[:, 0:self.N // 2, 0:self.N // 2 + 1] = imf[:, 0:self.N // 2, 0:self.N // 2 + 1]
@@ -326,7 +326,7 @@ class hexSimProcessor:
         return self._bigimgstore
 
     def reconstructframe_ocv(self, img, i):
-        if not opencv: raise AssertionError("No opencv present")
+        assert opencv, "No opencv present"
         diff = img - self._imgstore[i, :, :]
         imf = cv2.mulSpectrums(cv2.dft(diff), self._prefilter_ocv, 0)
         self._carray_ocv[0:self.N // 2, 0:self.N] = imf[0:self.N // 2, 0:self.N]
@@ -339,7 +339,7 @@ class hexSimProcessor:
         return self._bigimgstore
 
     def reconstructframe_ocvU(self, img, i):
-        if not opencv: raise AssertionError("No opencv present")
+        assert opencv, "No opencv present"
         img2 = cv2.UMat((2 * self.N, 2 * self.N), s=0.0, type=cv2.CV_32FC1)
         mask = cv2.UMat((self.N // 2, self.N // 2), s=1, type=cv2.CV_8U)
         imU = cv2.UMat(img)
@@ -363,7 +363,7 @@ class hexSimProcessor:
         return self._bigimgstoreU
 
     def reconstructframe_cupy(self, img, i):
-        if not cupy: raise AssertionError("No cupy present")
+        assert cupy, "No CuPy present"
         self._imgstore[i, :, :] = img
         diff = cp.asarray(img) - cp.asarray(self._imgstore[i, :, :])
         imf = cp.fft.rfft2(diff) * cp.asarray(self._prefilter[:, 0:self.N // 2 + 1])
@@ -388,12 +388,40 @@ class hexSimProcessor:
             self._carray1[:, 3 * self.N // 2:2 * self.N, 0:self.N // 2 + 1] = imf[i:i + 7, self.N // 2:self.N,
                                                                               0:self.N // 2 + 1]
             img2[i:i + 7, :, :] = fft.irfft2(self._carray1) * self._reconfactor
-        img3 = fft.irfft(fft.rfft(img2, nim, 0)[0:nim7 // 2, :, :], nim7, 0)
+        img3 = fft.irfft(fft.rfft(img2, nim, 0)[0:nim7 // 2 + 1, :, :], nim7, 0)
         res = fft.irfft2(fft.rfft2(img3) * self._postfilter[:, :self.N + 1])
         return res
 
+    def batchreconstructcompact(self, img):
+        nim = img.shape[0]
+        r = np.mod(nim, 14)
+        if r > 0:  # pad with empty frames so total number of frames is divisible by 14
+            img = np.concatenate((img, np.zeros((14 - r, self.N, self.N), np.single)))
+            nim = nim + 14 - r
+        nim7 = nim // 7
+        imf = fft.rfft2(img) * self._prefilter[:, 0:self.N // 2 + 1]
+        img2 = np.zeros([nim, 2 * self.N, 2 * self.N], dtype=np.single)
+        for i in range(0, nim, 7):
+            self._carray1[:, 0:self.N // 2, 0:self.N // 2 + 1] = imf[i:i + 7, 0:self.N // 2, 0:self.N // 2 + 1]
+            self._carray1[:, 3 * self.N // 2:2 * self.N, 0:self.N // 2 + 1] = imf[i:i + 7, self.N // 2:self.N,
+                                                                              0:self.N // 2 + 1]
+            img2[i:i + 7, :, :] = fft.irfft2(self._carray1) * self._reconfactor
+        res = np.zeros((nim7, 2 * self.N, 2 * self.N), dtype=np.single)
+
+        imgf = fft.rfft(img2[:, :self.N, :self.N], nim, 0)[:nim7 // 2 + 1, :, :]
+        res[:, :self.N, :self.N] = fft.irfft(imgf, nim7, 0)
+        imgf = fft.rfft(img2[:, :self.N, self.N:2 * self.N], nim, 0)[:nim7 // 2 + 1, :, :]
+        res[:, :self.N, self.N:2 * self.N] = fft.irfft(imgf, nim7, 0)
+        imgf = fft.rfft(img2[:, self.N:2 * self.N, :self.N], nim, 0)[:nim7 // 2 + 1, :, :]
+        res[:, self.N:2 * self.N, :self.N] = fft.irfft(imgf, nim7, 0)
+        imgf = fft.rfft(img2[:, self.N:2 * self.N, self.N:2 * self.N], nim, 0)[:nim7 // 2 + 1, :, :]
+        res[:, self.N:2 * self.N, self.N:2 * self.N] = fft.irfft(imgf, nim7, 0)
+
+        res = fft.irfft2(fft.rfft2(res) * self._postfilter[:, :self.N + 1])
+        return res
+
     def batchreconstruct_cupy(self, img):
-        if not cupy: raise AssertionError("No cupy present")
+        assert cupy, "No CuPy present"
         cp._default_memory_pool.free_all_blocks()
         img = cp.asarray(img, dtype=np.float32)
         nim = img.shape[0]
@@ -423,7 +451,7 @@ class hexSimProcessor:
             print(mempool.used_bytes())
             print(mempool.total_bytes())
 
-        img3 = cp.fft.irfft(cp.fft.rfft(img2, nim, 0)[0:nim7 // 2, :, :], nim7, 0)
+        img3 = cp.fft.irfft(cp.fft.rfft(img2, nim, 0)[0:nim7 // 2 + 1, :, :], nim7, 0)
         img2 = None
         cp._default_memory_pool.free_all_blocks()
         if self.debug:
@@ -433,7 +461,7 @@ class hexSimProcessor:
         return res
 
     def batchreconstructcompact_cupy(self, img):
-        if not cupy: raise AssertionError("No cupy present")
+        assert cupy, "No CuPy present"
         cp._default_memory_pool.free_all_blocks()
         img = cp.asarray(img, dtype=np.float32)
         nim = img.shape[0]
@@ -447,24 +475,24 @@ class hexSimProcessor:
         cp._default_memory_pool.free_all_blocks()
 
         img2 = cp.zeros([nim, 2 * self.N, 2 * self.N], dtype=np.single)
-        self._carray_cp = cp.zeros((7, 2 * self.N, self.N + 1), dtype=np.complex64)
+        bcarray = cp.zeros([7, 2 * self.N, self.N + 1], dtype=np.complex64)
         for i in range(0, nim, 7):
-            self._carray_cp[:, 0:self.N // 2, 0:self.N // 2 + 1] = imf[i:(i + 7), 0:self.N // 2, 0:self.N // 2 + 1]
-            self._carray_cp[:, 3 * self.N // 2:2 * self.N, 0:self.N // 2 + 1] = imf[i:(i + 7), self.N // 2:self.N,
-                                                                                0:self.N // 2 + 1]
-            img2 = cp.fft.irfftn(self._carray_cp) * cp.asarray(self._reconfactor)
+            bcarray[:, 0:self.N // 2, 0:self.N // 2 + 1] = imf[i:i + 7, 0:self.N // 2, 0:self.N // 2 + 1]
+            bcarray[:, 3 * self.N // 2:2 * self.N, 0:self.N // 2 + 1] = imf[i:i + 7, self.N // 2:self.N,
+                                                                        0:self.N // 2 + 1]
+            img2[i:i + 7, :, :] = cp.fft.irfft2(bcarray) * cp.asarray(self._reconfactor)
 
         self._carray_cp = None
         cp._default_memory_pool.free_all_blocks()
 
         imgout = cp.zeros([nim7, 2 * self.N, 2 * self.N], dtype=np.single)
-        imf = cp.fft.rfft(img2[:, 0:self.N, 0:self.N], nim, 0)[:nim7//2, :, :]
+        imf = cp.fft.rfft(img2[:, 0:self.N, 0:self.N], nim, 0)[:nim7//2 + 1, :, :]
         imgout[:, 0:self.N, 0:self.N] = cp.fft.irfft(imf, nim7, 0)
-        imf = cp.fft.rfft(img2[:, self.N:2 * self.N, 0:self.N], nim, 0)[:nim7//2, :, :]
-        imgout[:, self.N:2 * self.N, 0:self.N] = cp.fft.irfft(imf, nim7, 0)
-        imf = cp.fft.rfft(img2[:, 0:self.N, self.N:2 * self.N], nim, 0)[:nim7//2, :, :]
+        imf = cp.fft.rfft(img2[:, 0:self.N, self.N:2 * self.N], nim, 0)[:nim7//2 + 1, :, :]
         imgout[:, 0:self.N, self.N:2 * self.N] = cp.fft.irfft(imf, nim7, 0)
-        imf = cp.fft.rfft(img2[:, self.N:2 * self.N, self.N:2 * self.N], nim, 0)[:nim7//2, :, :]
+        imf = cp.fft.rfft(img2[:, self.N:2 * self.N, 0:self.N], nim, 0)[:nim7//2 + 1, :, :]
+        imgout[:, self.N:2 * self.N, 0:self.N] = cp.fft.irfft(imf, nim7, 0)
+        imf = cp.fft.rfft(img2[:, self.N:2 * self.N, self.N:2 * self.N], nim, 0)[:nim7//2 + 1, :, :]
         imgout[:, self.N:2 * self.N, self.N:2 * self.N] = cp.fft.irfft(imf, nim7, 0)
         imf = None
         cp._default_memory_pool.free_all_blocks()
