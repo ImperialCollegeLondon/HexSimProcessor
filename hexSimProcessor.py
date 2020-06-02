@@ -80,8 +80,9 @@ class hexSimProcessor:
         if cupy:
             self._prefilter_cp = cp.zeros((self.N, self.N), dtype=np.single)
             self._postfilter_cp = cp.zeros((2 * self.N, 2 * self.N), dtype=np.single)
-            self._carray_cp = cp.zeros((2 * self.N, self.N + 1), dtype=np.complex)
-            self._reconfactor_cp = cp.zeros((2 * self.N, 2 * self.N, 7), dtype=np.single)
+            self._carray_cp = cp.zeros((7, 2 * self.N, self.N + 1), dtype=np.complex)
+            self._reconfactor_cp = cp.zeros((7, 2 * self.N, 2 * self.N), dtype=np.single)
+            self._bigimgstore_cp = cp.zeros((2 * self.N, 2 * self.N), dtype=np.single)
         if opencv:
             self._prefilter_ocv = np.zeros((self.N, self.N),
                                            dtype=np.single)  # for prefilter stage, includes otf and zero order supression
@@ -457,17 +458,14 @@ class hexSimProcessor:
         cp._default_memory_pool.free_all_blocks()
 
         imgout = cp.zeros([nim7, 2 * self.N, 2 * self.N], dtype=np.single)
-        imf = cp.fft.fft(img2[:, 0:self.N, 0:self.N], nim, 0)
-
-        list_tmp = np.append(np.arange(0, nim7 // 2), np.arange(nim // 2 - nim7 // 2 + 1, (nim // 2 + 1)))
-
-        imgout[:, 0:self.N, 0:self.N] = cp.fft.ifft(imf[list_tmp, :, :], nim7, 0)
-        imf = cp.fft.fft(img2[:, self.N:2 * self.N, 0:self.N], nim, 0)
-        imgout[:, self.N:2 * self.N, 0:self.N] = cp.fft.ifft(imf[list_tmp, :, :], nim7, 0)
-        imf = cp.fft.fft(img2[:, 0:self.N, self.N:2 * self.N], nim, 0)
-        imgout[:, 0:self.N, self.N:2 * self.N] = cp.fft.ifft(imf[list_tmp, :, :], nim7, 0)
-        imf = cp.fft.fft(img2[:, self.N:2 * self.N, self.N:2 * self.N], nim, 0)
-        imgout[:, self.N:2 * self.N, self.N:2 * self.N] = cp.fft.ifft(imf[list_tmp, :, :], nim7, 0)
+        imf = cp.fft.rfft(img2[:, 0:self.N, 0:self.N], nim, 0)[:nim7//2, :, :]
+        imgout[:, 0:self.N, 0:self.N] = cp.fft.irfft(imf, nim7, 0)
+        imf = cp.fft.rfft(img2[:, self.N:2 * self.N, 0:self.N], nim, 0)[:nim7//2, :, :]
+        imgout[:, self.N:2 * self.N, 0:self.N] = cp.fft.irfft(imf, nim7, 0)
+        imf = cp.fft.rfft(img2[:, 0:self.N, self.N:2 * self.N], nim, 0)[:nim7//2, :, :]
+        imgout[:, 0:self.N, self.N:2 * self.N] = cp.fft.irfft(imf, nim7, 0)
+        imf = cp.fft.rfft(img2[:, self.N:2 * self.N, self.N:2 * self.N], nim, 0)[:nim7//2, :, :]
+        imgout[:, self.N:2 * self.N, self.N:2 * self.N] = cp.fft.irfft(imf, nim7, 0)
         imf = None
         cp._default_memory_pool.free_all_blocks()
 

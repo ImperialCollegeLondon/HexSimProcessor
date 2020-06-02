@@ -91,15 +91,15 @@ if isPlot:
     plt.figure()
     plt.imshow(imgb.get(), cmap=cm.hot, clim=(0.0, 0.7*imga.max()))
 
-# ''' CuPy '''
-# start_time = time.time()
-# for i in range(0, N):
-#     imgb = h.reconstruct_cupy(img1)
-# elapsed_time = time.time() - start_time
-# print(f'CuPy Reconstruction time: {elapsed_time / N:5f}s ')
-# if isPlot:
-#     plt.figure()
-#     plt.imshow(imgb.get(), cmap=cm.gray)
+''' CuPy '''
+start_time = time.time()
+for i in range(0, N):
+    imgb = h.reconstruct_cupy(img1)
+elapsed_time = time.time() - start_time
+print(f'CuPy Reconstruction time: {elapsed_time / N:5f}s ')
+if isPlot:
+    plt.figure()
+    plt.imshow(imgb.get(), cmap=cm.gray)
 
 ''' FFTW '''
 start_time = time.time()
@@ -141,18 +141,18 @@ if isPlot:
     plt.figure()
     plt.imshow(imga.get(), cmap=cm.hot, clim=(0.0, 0.7*imga.get().max()))
 
-# ''' CuPy '''
-# start_time = time.time()
-# for i in range(0, 7 * N):
-#     imga = h.reconstructframe_cupy(img1[i % 7, :, :], i % 7)
-# elapsed_time = time.time() - start_time
-# print(f'CuPy Reconstructframe time: {elapsed_time / (7 * N):5f}s ')
-# if isPlot:
-#     plt.figure()
-#     plt.imshow(imga.get(), cmap=cm.hot, clim=(0.0, 0.7*imga.max()))
+''' CuPy '''
+start_time = time.time()
+for i in range(0, 7 * N):
+    imga = h.reconstructframe_cupy(img1[i % 7, :, :], i % 7)
+elapsed_time = time.time() - start_time
+print(f'CuPy Reconstructframe time: {elapsed_time / (7 * N):5f}s ')
+if isPlot:
+    plt.figure()
+    plt.imshow(imga.get(), cmap=cm.hot, clim=(0.0, 0.7*imga.max()))
 
 ''' Read image stack'''
-filename = str("./Raw_img_stack_512_inplane_comp6.tif")
+filename = str("./Raw_img_stack_512_inplane.tif")
 img2 = tif.imread(filename)
 if Nsize != 512:
     img2 = np.single(img2[:, 256 - Nsize // 2: 256 + Nsize // 2, 256 - Nsize // 2: 256 + Nsize // 2])
@@ -176,13 +176,28 @@ print(f'Reconstruction time: {elapsed_time:5f}s ')
 
 if isPlot:
     plt.figure()
-    plt.imshow(imgout[20, :, :], cmap=cm.hot, clim=(0.0, 0.7*imga.max()))
+    plt.imshow(imgout[20, :, :], cmap=cm.hot, clim=(0.0, 0.7*imgout[20, :, :].max()))
 
-# ''' Batch process GPU '''
-# start_time = time.time()
-# imgout = h.batchreconstructcompact_cupy(img2)
-# elapsed_time = time.time() - start_time
-# print(f'Batch Reconstruction time(CuPy): {elapsed_time:5f}s ')
+''' Batch process GPU '''
+start_time = time.time()
+imgout = h.batchreconstructcompact_cupy(img2)
+elapsed_time = time.time() - start_time
+print(f'Batch Reconstruction compact time(CuPy): {elapsed_time:5f}s ')
+if isPlot:
+    plt.figure()
+    plt.imshow(imgout[20, :, :].get(), cmap=cm.hot, clim=(0.0, 0.7*imgout[20, :, :].max()))
+if isPlot:
+    plt.figure()
+    plt.imshow(imgout[39, :, :].get(), cmap=cm.hot, clim=(0.0, 0.7*imgout[20, :, :].max()))
+
+''' Batch process GPU '''
+start_time = time.time()
+imgout = h.batchreconstruct_cupy(img2)
+elapsed_time = time.time() - start_time
+print(f'Batch Reconstruction time(CuPy): {elapsed_time:5f}s ')
+if isPlot:
+    plt.figure()
+    plt.imshow(imgout[20, :, :].get(), cmap=cm.hot, clim=(0.0, 0.7*imgout[20, :, :].max()))
 
 
 plt.show()
