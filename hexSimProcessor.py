@@ -71,8 +71,8 @@ class hexSimProcessor:
         self._prefilter = np.zeros((self.N, self.N),
                                    dtype=np.single)  # for prefilter stage, includes otf and zero order supression
         self._postfilter = np.zeros((2 * self.N, 2 * self.N), dtype=np.single)
-        self._carray = pyfftw.zeros_aligned((7, 2 * self.N, 2 * self.N), dtype=np.complex64)
-        self._carray1 = pyfftw.zeros_aligned((7, 2 * self.N, self.N + 1), dtype=np.complex64)
+        self._carray = np.zeros((7, 2 * self.N, 2 * self.N), dtype=np.complex64)
+        self._carray1 = np.zeros((7, 2 * self.N, self.N + 1), dtype=np.complex64)
 
         self._imgbig = np.zeros((7, 2 * self.N, 2 * self.N), dtype=np.single)
         self._imgbig1 = np.zeros((7, 2 * self.N, 2 * self.N), dtype=np.single)
@@ -190,7 +190,7 @@ class hexSimProcessor:
             imgo = self.reconstruct_fftw(img)
             kernel = np.ones((5, 5), np.uint8)
             mask_tmp = abs(fft.fftshift(fft.fft2(imgo))) > (10 * gaussian_filter(abs(fft.fftshift(fft.fft2(imgo))), 5))
-            mask = cv2.dilate(np.single(mask_tmp), kernel)
+            mask = scipy.ndimage.morphology.binary_dilation(np.single(mask_tmp), kernel)
             mask[self.N - 12:self.N + 13, self.N - 12:self.N + 13] = np.full((25, 25), False)
             mask_shift = (fft.fftshift(mask))
             self._postfilter[mask_shift.astype(bool)] = 0
