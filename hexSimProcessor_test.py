@@ -170,13 +170,13 @@ if isPlot:
     plt.imshow(imga, cmap=cm.hot, clim=(0.0, 0.7*imga.max()))
 
 start_time = time.time()
-imgout = h.batchreconstruct(img2)
+imgouta = h.batchreconstruct(img2)
 elapsed_time = time.time() - start_time
 print(f'Reconstruction time: {elapsed_time:5f}s ')
 
 if isPlot:
     plt.figure()
-    plt.imshow(imgout[20, :, :], cmap=cm.hot, clim=(0.0, 0.7*imgout[20, :, :].max()))
+    plt.imshow(imgouta[20, :, :], cmap=cm.hot, clim=(0.0, 0.7*imgouta[20, :, :].max()))
 
 ''' Batch process GPU '''
 start_time = time.time()
@@ -188,7 +188,7 @@ if isPlot:
     plt.imshow(imgout[20, :, :].get(), cmap=cm.hot, clim=(0.0, 0.7*imgout[20, :, :].max()))
 if isPlot:
     plt.figure()
-    plt.imshow(imgout[39, :, :].get(), cmap=cm.hot, clim=(0.0, 0.7*imgout[20, :, :].max()))
+    plt.imshow(imgout[20, :, :].get()-imgouta[20, :, :], cmap=cm.hot)
 
 ''' Batch process GPU '''
 start_time = time.time()

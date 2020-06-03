@@ -388,7 +388,7 @@ class hexSimProcessor:
             self._carray1[:, 3 * self.N // 2:2 * self.N, 0:self.N // 2 + 1] = imf[i:i + 7, self.N // 2:self.N,
                                                                               0:self.N // 2 + 1]
             img2[i:i + 7, :, :] = fft.irfft2(self._carray1) * self._reconfactor
-        img3 = fft.irfft(fft.rfft(img2, nim, 0)[0:nim7 // 2, :, :], nim7, 0)
+        img3 = fft.irfft(fft.rfft(img2, nim, 0)[0:nim7 // 2 + 1, :, :], nim7, 0)
         res = fft.irfft2(fft.rfft2(img3) * self._postfilter[:, :self.N + 1])
         return res
 
@@ -409,13 +409,14 @@ class hexSimProcessor:
             print(mempool.used_bytes())
             print(mempool.total_bytes())
 
-        img2 = cp.zeros([nim, 2 * self.N, 2 * self.N], dtype=np.single)
-        bcarray = cp.zeros([7, 2 * self.N, self.N + 1], dtype=np.complex64)
+        img2 = cp.zeros((nim, 2 * self.N, 2 * self.N), dtype=np.single)
+        bcarray = cp.zeros((7, 2 * self.N, self.N + 1), dtype=np.complex64)
+        reconfactor_cp = cp.asarray(self._reconfactor)
         for i in range(0, nim, 7):
             bcarray[:, 0:self.N // 2, 0:self.N // 2 + 1] = imf[i:i + 7, 0:self.N // 2, 0:self.N // 2 + 1]
             bcarray[:, 3 * self.N // 2:2 * self.N, 0:self.N // 2 + 1] = imf[i:i + 7, self.N // 2:self.N,
                                                                         0:self.N // 2 + 1]
-            img2[i:i + 7, :, :] = cp.fft.irfft2(bcarray) * cp.asarray(self._reconfactor)
+            img2[i:i + 7, :, :] = cp.fft.irfft2(bcarray) * reconfactor_cp
         imf = None
         bcarray = None
         cp._default_memory_pool.free_all_blocks()
@@ -423,7 +424,7 @@ class hexSimProcessor:
             print(mempool.used_bytes())
             print(mempool.total_bytes())
 
-        img3 = cp.fft.irfft(cp.fft.rfft(img2, nim, 0)[0:nim7 // 2, :, :], nim7, 0)
+        img3 = cp.fft.irfft(cp.fft.rfft(img2, nim, 0)[0:nim7 // 2 + 1, :, :], nim7, 0)
         img2 = None
         cp._default_memory_pool.free_all_blocks()
         if self.debug:
@@ -446,25 +447,26 @@ class hexSimProcessor:
         img = None
         cp._default_memory_pool.free_all_blocks()
 
-        img2 = cp.zeros([nim, 2 * self.N, 2 * self.N], dtype=np.single)
-        self._carray_cp = cp.zeros((7, 2 * self.N, self.N + 1), dtype=np.complex64)
+        img2 = cp.zeros((nim, 2 * self.N, 2 * self.N), dtype=np.single)
+        bcarray = cp.zeros((7, 2 * self.N, self.N + 1), dtype=np.complex64)
+        reconfactor_cp = cp.asarray(self._reconfactor)
         for i in range(0, nim, 7):
-            self._carray_cp[:, 0:self.N // 2, 0:self.N // 2 + 1] = imf[i:(i + 7), 0:self.N // 2, 0:self.N // 2 + 1]
-            self._carray_cp[:, 3 * self.N // 2:2 * self.N, 0:self.N // 2 + 1] = imf[i:(i + 7), self.N // 2:self.N,
-                                                                                0:self.N // 2 + 1]
-            img2 = cp.fft.irfftn(self._carray_cp) * cp.asarray(self._reconfactor)
+            bcarray[:, 0:self.N // 2, 0:self.N // 2 + 1] = imf[i:i + 7, 0:self.N // 2, 0:self.N // 2 + 1]
+            bcarray[:, 3 * self.N // 2:2 * self.N, 0:self.N // 2 + 1] = imf[i:i + 7, self.N // 2:self.N,
+                                                                        0:self.N // 2 + 1]
+            img2[i:i + 7, :, :] = cp.fft.irfft2(bcarray) * reconfactor_cp
 
-        self._carray_cp = None
+        # self._carray_cp = None
         cp._default_memory_pool.free_all_blocks()
 
-        imgout = cp.zeros([nim7, 2 * self.N, 2 * self.N], dtype=np.single)
-        imf = cp.fft.rfft(img2[:, 0:self.N, 0:self.N], nim, 0)[:nim7//2, :, :]
+        imgout = cp.zeros((nim7, 2 * self.N, 2 * self.N), dtype=np.single)
+        imf = cp.fft.rfft(img2[:, 0:self.N, 0:self.N], nim, 0)[:nim7 // 2 + 1, :, :]
         imgout[:, 0:self.N, 0:self.N] = cp.fft.irfft(imf, nim7, 0)
-        imf = cp.fft.rfft(img2[:, self.N:2 * self.N, 0:self.N], nim, 0)[:nim7//2, :, :]
+        imf = cp.fft.rfft(img2[:, self.N:2 * self.N, 0:self.N], nim, 0)[:nim7 // 2 + 1, :, :]
         imgout[:, self.N:2 * self.N, 0:self.N] = cp.fft.irfft(imf, nim7, 0)
-        imf = cp.fft.rfft(img2[:, 0:self.N, self.N:2 * self.N], nim, 0)[:nim7//2, :, :]
+        imf = cp.fft.rfft(img2[:, 0:self.N, self.N:2 * self.N], nim, 0)[:nim7 // 2 + 1, :, :]
         imgout[:, 0:self.N, self.N:2 * self.N] = cp.fft.irfft(imf, nim7, 0)
-        imf = cp.fft.rfft(img2[:, self.N:2 * self.N, self.N:2 * self.N], nim, 0)[:nim7//2, :, :]
+        imf = cp.fft.rfft(img2[:, self.N:2 * self.N, self.N:2 * self.N], nim, 0)[:nim7 // 2 + 1, :, :]
         imgout[:, self.N:2 * self.N, self.N:2 * self.N] = cp.fft.irfft(imf, nim7, 0)
         imf = None
         cp._default_memory_pool.free_all_blocks()
