@@ -136,7 +136,7 @@ try:
     for i in range(0, 7 * N):
         imga = h.reconstructframe_ocv(img1[i % 7, :, :], i % 7)
     elapsed_time = time.time() - start_time
-    print(f'ocv Reconstruction time: {elapsed_time / (7 * N):5f}s ')
+    print(f'ocv Reconstruct frame time: {elapsed_time / (7 * N):5f}s ')
     if isPlot:
         plt.figure()
         plt.imshow(imga, cmap=cm.hot, clim=(0.0, 0.7*imga.max()))
@@ -149,7 +149,7 @@ try:
     for i in range(0, 7 * N):
         imga = h.reconstructframe_ocvU(img1[i % 7, :, :], i % 7)
     elapsed_time = time.time() - start_time
-    print(f'ocvU Reconstruction time: {elapsed_time / (7 * N):5f}s ')
+    print(f'ocvU Reconstruct frame time: {elapsed_time / (7 * N):5f}s ')
     if isPlot:
         plt.figure()
         plt.imshow(imga.get(), cmap=cm.hot, clim=(0.0, 0.7*imga.get().max()))
