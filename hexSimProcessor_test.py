@@ -12,7 +12,7 @@ import time
 plt.close('all')
 isPlot = True
 N = 10  # number of iterations
-Nsize = 512
+Nsize = 256
 
 ''' Initialize '''
 # h=HexSimProcessor
@@ -224,17 +224,17 @@ try:
 except AssertionError as error:
     print(error)
 
-''' Batch process GPU '''
-try:
-    start_time = time.time()
-    imgout = h.batchreconstruct_cupy(img2)
-    elapsed_time = time.time() - start_time
-    print(f'Batch Reconstruction time(CuPy): {elapsed_time:5f}s ')
-    if isPlot:
-        plt.figure()
-        plt.imshow(imgout[20, :, :].get(), cmap=cm.hot, clim=(0.0, 0.7*imgout[20, :, :].max()))
-except AssertionError as error:
-    print(error)
-
+#''' Batch process GPU '''
+#try:
+    #start_time = time.time()
+    #imgout = h.batchreconstruct_cupy(img2)
+    #elapsed_time = time.time() - start_time
+    #print(f'Batch Reconstruction time(CuPy): {elapsed_time:5f}s ')
+    #if isPlot:
+        #plt.figure()
+        #plt.imshow(imgout[20, :, :].get(), cmap=cm.hot, clim=(0.0, 0.7*imgout[20, :, :].max()))
+#except AssertionError as error:
+    #print(error)
+#
 
 plt.show()
