@@ -77,8 +77,9 @@ def pyczt(x, k=None, w=None, a=None):
     nn = np.arange(0, m)[:, np.newaxis]
     aa = a ** (-nn)
     aa = aa * ww[m+nn-1, 0]
-    y = x * aa
-
+    # y = (x * aa)
+    y = (x * aa).astype(np.complex64)
+    # print(y.dtype)
     # %------- Fast convolution via FFT.
 
     fy = fft.fft(y, nfft, axis=0)

@@ -10,9 +10,9 @@ import time
 # import cProfile
 
 plt.close('all')
-isPlot = True
+isPlot = False
 N = 10  # number of iterations
-Nsize = 256
+Nsize = 512
 
 ''' Initialize '''
 # h=HexSimProcessor
@@ -36,11 +36,20 @@ if isPlot:
     plt.figure()
     plt.imshow(np.sum(img1, 0), cmap=cm.gray)
 
+''' Calibration Cupy'''
+start_time = time.time()
+h.calibrate_fast(img1)
+elapsed_time = time.time() - start_time
+print(f'Fast Calibration time: {elapsed_time:5f}s ')
+
 ''' Calibration '''
 start_time = time.time()
 h.calibrate(img1)
 elapsed_time = time.time() - start_time
 print(f'Calibration time: {elapsed_time:5f}s ')
+
+
+
 
 ''' Recontruction '''
 
@@ -51,25 +60,15 @@ for i in range(0, 10):
 elapsed_time = time.time() - start_time
 print(f'FFTW Reconstruction time: {elapsed_time / 10:5f}s ')
 
-''' FFTW '''
+''' rFFTW '''
 start_time = time.time()
 for i in range(0, N):
     imga = h.reconstruct_rfftw(img1)
 elapsed_time = time.time() - start_time
-print(f'FFTW Reconstruction time: {elapsed_time / N:5f}s ')
-if isPlot:
-    plt.figure()
-    plt.imshow(imga, cmap=cm.hot, clim=(0.0, 0.7*imga.max()))
-
-''' rFTTFW '''
-start_time = time.time()
-for i in range(0, N):
-    imgb = h.reconstruct_rfftw(img1)
-elapsed_time = time.time() - start_time
 print(f'rFFTW Reconstruction time: {elapsed_time / N:5f}s ')
 if isPlot:
     plt.figure()
-    plt.imshow(imgb, cmap=cm.hot, clim=(0.0, 0.7*imga.max()))
+    plt.imshow(imga, cmap=cm.hot, clim=(0.0, 0.7*imga.max()))
 
 ''' ocv '''
 try:
@@ -190,7 +189,7 @@ if isPlot:
 start_time = time.time()
 imgouta = h.batchreconstruct(img2)
 elapsed_time = time.time() - start_time
-print(f'Reconstruction time: {elapsed_time:5f}s ')
+print(f'Batch Reconstruction time (CPU): {elapsed_time:5f}s ')
 
 if isPlot:
     plt.figure()
@@ -199,7 +198,7 @@ if isPlot:
 start_time = time.time()
 imgoutb = h.batchreconstructcompact(img2)
 elapsed_time = time.time() - start_time
-print(f'Reconstruction time: {elapsed_time:5f}s ')
+print(f'Batch Reconstruction compact time (CPU): {elapsed_time:5f}s ')
 
 if isPlot:
     plt.figure()
