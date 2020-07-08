@@ -178,7 +178,8 @@ else:
 
 start_time = time.time()
 h.cleanup = False
-h.calibrate(img2[140:147, :, :])
+#h.calibrate(img2[140:147, :, :])
+h.calibrate_fast(img2[140:147, :, :])
 elapsed_time = time.time() - start_time
 print(f'Calibration time: {elapsed_time:5f}s ')
 imga = h.reconstruct_rfftw(img2[140:147, :, :])

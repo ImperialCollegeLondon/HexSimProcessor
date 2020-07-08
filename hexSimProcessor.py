@@ -29,6 +29,7 @@ except:
 try:
     import cupy as cp
     import cupyx
+    import cupyx.scipy.ndimage
     mempool = cp.get_default_memory_pool()
     pinned_mempool = cp.get_default_pinned_memory_pool()
     cupy = True
