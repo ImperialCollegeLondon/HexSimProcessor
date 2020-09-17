@@ -236,5 +236,33 @@ try:
 except AssertionError as error:
     print(error)
 
+''' Beads test '''
+
+dir = "/Users/maan/Imperial College London/Guo, Wenjun - 3-beam hex SIM image data/"
+filename = dir + "hexSIM data in use/SIMdata_2019-11-05_15-45-12/SIMdata_2019-11-05_15-45-12.tif"
+imgbeads = np.single(tif.imread(filename))
+
+hb = hexSimProcessor()
+hb.N = 512
+hb.magnification = 40
+hb.NA = 0.75
+hb.n = 1.0
+hb.eta = 0.7
+hb.beta = 0.999
+hb.alpha = 0.1
+hb.w = 0.3
+hb.debug = True
+hb.cleanup = True
+
+hb.calibrate(imgbeads)
+
+try:
+    imgb = hb.reconstruct_ocvU(imgbeads).get()
+    if isPlot:
+        plt.figure()
+        plt.imshow(imgb, cmap=cm.hot, clim=(0.0, 0.25 * imgb.max()))
+except AssertionError as error:
+    print(error)
+
 
 plt.show()

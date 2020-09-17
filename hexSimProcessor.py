@@ -6,6 +6,7 @@ from numpy import exp, pi, cos, sqrt, arccos
 from pyczt import pyczt
 import multiprocessing
 import time
+import scipy.io
 
 try:
     import pyfftw
@@ -61,7 +62,8 @@ class hexSimProcessor:
         self._res = self.wavelength / (2 * self.NA)
         self._oversampling = self._res / self._dx
         self._dk = self._oversampling / (self.N / 2)  # Smpling in frequency plane
-        self._kx = np.linspace(-self._dk * self.N / 2, self._dk * self.N / 2 - self._dk, self.N, dtype=np.single)
+        # self._kx = np.linspace(-self._dk * self.N / 2, self._dk * self.N / 2 - self._dk, self.N, dtype=np.single)
+        self._kx = np.arange(-self._dk * self.N / 2, self._dk * self.N / 2, self._dk, dtype=np.single)
         [self._kx, self._ky] = np.meshgrid(self._kx, self._kx)
         self._dx2 = self._dx / 2
 
@@ -93,12 +95,14 @@ class hexSimProcessor:
             self._imgstoreU = [cv2.UMat((2 * self.N, 2 * self.N), s=0.0, type=cv2.CV_32FC2) for i in range(7)]
         self._lastN = self.N
 
+    # @profile
     def calibrate(self, img):
         if self.N != self._lastN:
             self._allocate_arrays()
 
         kr = np.sqrt(self._kx ** 2 + self._ky ** 2, dtype=np.single)
-        kxbig = np.linspace(-self._dk * self.N, self._dk * self.N - self._dk, 2 * self.N, dtype=np.single)
+        # kxbig = np.linspace(-self._dk * self.N, self._dk * self.N - self._dk, 2 * self.N, dtype=np.single)
+        kxbig = np.arange(-self._dk * self.N, self._dk * self.N, self._dk, dtype=np.single)
         [kxbig, kybig] = np.meshgrid(kxbig, kxbig)
 
         '''Separate bands into DC and 3 high frequency bands'''
@@ -106,7 +110,6 @@ class hexSimProcessor:
 
         sum_prepared_comp = np.zeros((4, self.N, self.N), dtype=np.complex)
         wienerfilter = np.zeros((2 * self.N, 2 * self.N), dtype=np.single)
-
         for k in range(0, 4):
             for l in range(0, 7):
                 sum_prepared_comp[k, :, :] = sum_prepared_comp[k, :, :] + img[l, :, :] * M[k, l]
@@ -123,6 +126,14 @@ class hexSimProcessor:
         for i in range(0, 3):
             ckx[i], cky[i], p[i], ampl[i] = self._findCarrier(sum_prepared_comp[0, :, :],
                                                               sum_prepared_comp[i + 1, :, :], mask1)
+        if self.debug :
+            print(f'kx = {ckx[0]}, {ckx[1]}, {ckx[2]}')
+            print(f'ky = {cky[0]}, {cky[1]}, {cky[2]}')
+            print(f'p  = {p[0]}, {p[1]}, {p[2]}')
+            print(f'a  = {ampl[0]}, {ampl[1]}, {ampl[2]}')
+
+        # p = [-2.7048297, -1.1412208, -0.7435883]
+        # ampl = [0.1267688, 0.2184476, 0.1788682]
 
         ph = np.single(2 * pi * self.NA / self.wavelength)
 
@@ -138,14 +149,14 @@ class hexSimProcessor:
             pstep = idx_p * 2 * pi / 7
             if self.usemodulation:
                 self._reconfactor[idx_p, :, :] = (1 + 4 / ampl[0] * np.outer(exp(1j * ph * cky[0] * yy), exp(
-                    1j * (ph * ckx[0] * xx - pstep + p[1]))).real
+                    1j * (ph * ckx[0] * xx - pstep + p[0]))).real
                                                   + 4 / ampl[1] * np.outer(exp(1j * ph * cky[1] * yy), exp(
                             1j * (ph * ckx[1] * xx - 2 * pstep + p[1]))).real
                                                   + 4 / ampl[2] * np.outer(exp(1j * ph * cky[2] * yy), exp(
                             1j * (ph * ckx[2] * xx - 3 * pstep + p[2]))).real)
             else:
                 self._reconfactor[idx_p, :, :] = (1 + A * np.outer(exp(1j * ph * cky[0] * yy),
-                                                                   exp(1j * (ph * ckx[0] * xx - pstep + p[1]))).real
+                                                                   exp(1j * (ph * ckx[0] * xx - pstep + p[0]))).real
                                                   + A * np.outer(exp(1j * ph * cky[1] * yy),
                                                                  exp(1j * (ph * ckx[1] * xx - 2 * pstep + p[1]))).real
                                                   + A * np.outer(exp(1j * ph * cky[2] * yy),
@@ -153,6 +164,7 @@ class hexSimProcessor:
             # self._reconfactor[:,:,idx_p] = (1+12*cos(ph*(ckx[0]*x2+cky[0]*y2)-pstep+p[0])
             #                                 +12*cos(ph*(ckx[1]*x2+cky[1]*y2)-2*pstep+p[1])
             #                                 +12*cos(ph*(ckx[2]*x2+cky[2]*y2)-3*pstep+p[2]))
+        # scipy.io.savemat('reconfactor.mat', {'pyr':self._reconfactor})
 
         # calculate pre-filter factors
 
@@ -374,6 +386,7 @@ class hexSimProcessor:
             cp.fft.rfft2(img2) * cp.asarray(self._postfilter[:, 0:self.N + 1]))
         return self._bigimgstore_cp
 
+    # @profile
     def batchreconstruct(self, img):
         nim = img.shape[0]
         r = np.mod(nim, 14)
@@ -392,6 +405,7 @@ class hexSimProcessor:
         res = fft.irfft2(fft.rfft2(img3) * self._postfilter[:, :self.N + 1])
         return res
 
+    # @profile
     def batchreconstructcompact(self, img):
         nim = img.shape[0]
         r = np.mod(nim, 14)
@@ -505,9 +519,17 @@ class hexSimProcessor:
     def _findCarrier(self, band0, band1, mask):
         band = band0 * band1
         ixf = abs(fft.fftshift(fft.fft2(fft.fftshift(band))))
+        if self.debug:
+            plt.figure()
+            plt.title('Find carrier')
+            plt.imshow((ixf - gaussian_filter(ixf, 20)) * mask)
         pyc0, pxc0 = self._findPeak((ixf - gaussian_filter(ixf, 20)) * mask)
-        ixfz, Kx, Ky = self._zoomf(band, self.N, self._kx[pyc0, pxc0], self._ky[pyc0, pxc0], 100, self._dk * self.N)
+        ixfz, Kx, Ky = self._zoomf(band, self.N, self._kx[pyc0, pxc0], self._ky[pyc0, pxc0], 50, self._dk * self.N)
         pyc, pxc = self._findPeak(abs(ixfz))
+        if self.debug:
+            plt.figure()
+            plt.title('Zoon Find carrier')
+            plt.imshow(abs(ixfz))
         # phase = np.angle(ixfz[pyc, pxc])
         kx = Kx[pxc]
         ky = Ky[pyc]
@@ -525,7 +547,8 @@ class hexSimProcessor:
             otf_mask & scipy.ndimage.shift(otf_mask, (pyc0 - (self.N // 2 + 1), pxc0 - (self.N // 2 + 1)), order=0))
         band0_common = fft.ifft2(fft.fft2(band0) / otf * otf_mask_for_band_common_freq)
 
-        xx = np.linspace(-self.N / 2 * self._dx, self.N / 2 * self._dx - self._dx, self.N, dtype=np.single)
+        # xx = np.linspace(-self.N / 2 * self._dx, self.N / 2 * self._dx - self._dx, self.N, dtype=np.single)
+        xx = np.arange(-self.N / 2 * self._dx, self.N / 2 * self._dx, self._dx, dtype=np.single)
         phase_shift_to_xpeak = exp(-1j * kx * xx * 2 * pi * self.NA / self.wavelength)
         phase_shift_to_ypeak = exp(-1j * ky * xx * 2 * pi * self.NA / self.wavelength)
 
