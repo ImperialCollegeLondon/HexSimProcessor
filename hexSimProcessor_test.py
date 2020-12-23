@@ -1,4 +1,3 @@
-# from HexSimProcessorFast import *
 from hexSimProcessor import *
 from pathlib import Path
 import matplotlib.cm as cm
@@ -22,9 +21,10 @@ h.cleanup = True
 h.N = (Nsize // 2) * 2
 
 ''' Read Image '''
-data_folder = Path("C:/Users/hgong/Documents/simDATA/")
-filename = str(data_folder / "SIMdata_2019-11-05_15-21-42/SIMdata_2019-11-05_15-21-42.tif")
+#data_folder = Path("C:/Users/hgong/Documents/simDATA/")
+#filename = str(data_folder / "SIMdata_2019-11-05_15-21-42/SIMdata_2019-11-05_15-21-42.tif")
 filename = "./SIMdata_2019-11-05_15-21-42.tif"
+#filename = "./Raw_img_stack_512_inplane.tif"
 img1 = tif.imread(filename)
 
 if Nsize != 512:
@@ -47,9 +47,6 @@ start_time = time.time()
 h.calibrate(img1)
 elapsed_time = time.time() - start_time
 print(f'Calibration time: {elapsed_time:5f}s ')
-
-
-
 
 ''' Recontruction '''
 
@@ -181,6 +178,14 @@ h.cleanup = False
 h.calibrate(img2[140:147, :, :])
 elapsed_time = time.time() - start_time
 print(f'Calibration time: {elapsed_time:5f}s ')
+
+''' Calibration Cupy'''
+start_time = time.time()
+h.calibrate_fast(img2[140:147, :, :])
+elapsed_time = time.time() - start_time
+print(f'Fast Calibration time: {elapsed_time:5f}s ')
+
+
 imga = h.reconstruct_rfftw(img2[140:147, :, :])
 if isPlot:
     plt.figure()
