@@ -61,7 +61,7 @@ class hexSimProcessor:
         self._dx = self.pixelsize / self.magnification  # Sampling in image plane
         self._res = self.wavelength / (2 * self.NA)
         self._oversampling = self._res / self._dx
-        self._dk = self._oversampling / (self.N / 2)  # Smpling in frequency plane
+        self._dk = self._oversampling / (self.N / 2)  # Sampling in frequency plane
         # self._kx = np.linspace(-self._dk * self.N / 2, self._dk * self.N / 2 - self._dk, self.N, dtype=np.single)
         self._kx = np.arange(-self._dk * self.N / 2, self._dk * self.N / 2, self._dk, dtype=np.single)
         [self._kx, self._ky] = np.meshgrid(self._kx, self._kx)
@@ -110,6 +110,7 @@ class hexSimProcessor:
 
         sum_prepared_comp = np.zeros((4, self.N, self.N), dtype=np.complex)
         wienerfilter = np.zeros((2 * self.N, 2 * self.N), dtype=np.single)
+
         for k in range(0, 4):
             for l in range(0, 7):
                 sum_prepared_comp[k, :, :] = sum_prepared_comp[k, :, :] + img[l, :, :] * M[k, l]
@@ -126,7 +127,7 @@ class hexSimProcessor:
         for i in range(0, 3):
             ckx[i], cky[i], p[i], ampl[i] = self._findCarrier(sum_prepared_comp[0, :, :],
                                                               sum_prepared_comp[i + 1, :, :], mask1)
-        if self.debug :
+        if self.debug:
             print(f'kx = {ckx[0]}, {ckx[1]}, {ckx[2]}')
             print(f'ky = {cky[0]}, {cky[1]}, {cky[2]}')
             print(f'p  = {p[0]}, {p[1]}, {p[2]}')
@@ -165,7 +166,6 @@ class hexSimProcessor:
             #                                 +12*cos(ph*(ckx[1]*x2+cky[1]*y2)-2*pstep+p[1])
             #                                 +12*cos(ph*(ckx[2]*x2+cky[2]*y2)-3*pstep+p[2]))
         # scipy.io.savemat('reconfactor.mat', {'pyr':self._reconfactor})
-
         # calculate pre-filter factors
 
         mask2 = (kr < 2)
@@ -194,7 +194,7 @@ class hexSimProcessor:
             plt.title('WienerFilter')
             plt.imshow(wienerfilter)
 
-        kmax = 1 * (2 + sqrt(ckx[0] ** 2 + cky[0]))
+        kmax = 1 * (2 + sqrt(ckx[0] ** 2 + cky[0] ** 2))
         wienerfilter = mtot * (1 - kr * mtot / kmax) / (wienerfilter * mtot + self.w ** 2)
         self._postfilter = fft.fftshift(wienerfilter)
 
@@ -312,7 +312,8 @@ class hexSimProcessor:
         self._carray_cp[:, 3 * self.N // 2:2 * self.N, 0:self.N // 2 + 1] = imf[:, self.N // 2:self.N,
                                                                             0:self.N // 2 + 1]
         img2 = cp.sum(cp.fft.irfft2(self._carray_cp) * cp.asarray(self._reconfactor), 0)
-        return cp.fft.irfft2(cp.fft.rfft2(img2) * cp.asarray(self._postfilter[:, 0:self.N + 1]))
+        self._bigimgstore_cp = cp.fft.irfft2(cp.fft.rfft2(img2) * cp.asarray(self._postfilter[:, 0:self.N + 1]))
+        return self._bigimgstore_cp
 
     def reconstructframe_fftw(self, img, i):
         diff = img - self._imgstore[i, :, :]
@@ -376,7 +377,6 @@ class hexSimProcessor:
 
     def reconstructframe_cupy(self, img, i):
         assert cupy, "No CuPy present"
-        self._imgstore[i, :, :] = img
         diff = cp.asarray(img) - cp.asarray(self._imgstore[i, :, :])
         imf = cp.fft.rfft2(diff) * cp.asarray(self._prefilter[:, 0:self.N // 2 + 1])
         self._carray_cp[0, 0:self.N // 2, 0:self.N // 2 + 1] = imf[0:self.N // 2, 0:self.N // 2 + 1]
@@ -384,6 +384,7 @@ class hexSimProcessor:
         img2 = cp.fft.irfft2(self._carray_cp[0, :, :]) * cp.asarray(self._reconfactor[i, :, :])
         self._bigimgstore_cp = self._bigimgstore_cp + cp.fft.irfft2(
             cp.fft.rfft2(img2) * cp.asarray(self._postfilter[:, 0:self.N + 1]))
+        self._imgstore[i, :, :] = img
         return self._bigimgstore_cp
 
     # @profile
@@ -482,7 +483,7 @@ class hexSimProcessor:
         nim = img.shape[0]
         r = np.mod(nim, 14)
         if r > 0:  # pad with empty frames so total number of frames is divisible by 14
-            img = np.concatenate((img, cp.zeros((14 - r, self.N, self.N), np.single)))
+            img = cp.concatenate((img, cp.zeros((14 - r, self.N, self.N), np.single)))
             nim = nim + 14 - r
         nim7 = nim // 7
         imf = cp.fft.rfft2(img) * cp.asarray(self._prefilter[:, 0:self.N // 2 + 1])
@@ -519,13 +520,16 @@ class hexSimProcessor:
     def _findCarrier(self, band0, band1, mask):
         band = band0 * band1
         ixf = abs(fft.fftshift(fft.fft2(fft.fftshift(band))))
+
         if self.debug:
             plt.figure()
             plt.title('Find carrier')
             plt.imshow((ixf - gaussian_filter(ixf, 20)) * mask)
+
         pyc0, pxc0 = self._findPeak((ixf - gaussian_filter(ixf, 20)) * mask)
         ixfz, Kx, Ky = self._zoomf(band, self.N, self._kx[pyc0, pxc0], self._ky[pyc0, pxc0], 50, self._dk * self.N)
         pyc, pxc = self._findPeak(abs(ixfz))
+
         if self.debug:
             plt.figure()
             plt.title('Zoon Find carrier')
