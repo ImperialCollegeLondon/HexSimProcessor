@@ -2,7 +2,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import scipy
 from scipy.ndimage import gaussian_filter
-from cupy_filters import gaussian_filter as gaussian_filter_cupy
 from numpy import exp, pi, cos, sqrt, arccos
 from pyczt import pyczt
 import multiprocessing
@@ -31,6 +30,7 @@ try:
     import cupy as cp
     import cupyx
     import cupyx.scipy.ndimage
+    from cupy_filters import gaussian_filter as gaussian_filter_cupy
     mempool = cp.get_default_memory_pool()
     pinned_mempool = cp.get_default_pinned_memory_pool()
     cupy = True
@@ -193,7 +193,7 @@ class hexSimProcessor:
             plt.title('WienerFilter')
             plt.imshow(wienerfilter)
 
-        kmax = 1 * (2 + sqrt(ckx[0] ** 2 + cky[0]))
+        kmax = 1 * (2 + sqrt(ckx[0] ** 2 + cky[0]**2))
         wienerfilter = mtot * (1 - kr * mtot / kmax) / (wienerfilter * mtot + self.w ** 2)
         self._postfilter = fft.fftshift(wienerfilter)
 
@@ -405,7 +405,8 @@ class hexSimProcessor:
         self._carray_cp[:, 3 * self.N // 2:2 * self.N, 0:self.N // 2 + 1] = imf[:, self.N // 2:self.N,
                                                                             0:self.N // 2 + 1]
         img2 = cp.sum(cp.fft.irfft2(self._carray_cp) * cp.asarray(self._reconfactor), 0)
-        return cp.fft.irfft2(cp.fft.rfft2(img2) * cp.asarray(self._postfilter[:, 0:self.N + 1]))
+        self._bigimgstore_cp = cp.fft.irfft2(cp.fft.rfft2(img2) * cp.asarray(self._postfilter[:, 0:self.N + 1]))
+        return self._bigimgstore_cp
 
     def reconstructframe_fftw(self, img, i):
         diff = img - self._imgstore[i, :, :]
@@ -469,7 +470,6 @@ class hexSimProcessor:
 
     def reconstructframe_cupy(self, img, i):
         assert cupy, "No CuPy present"
-        self._imgstore[i, :, :] = img
         diff = cp.asarray(img) - cp.asarray(self._imgstore[i, :, :])
         imf = cp.fft.rfft2(diff) * cp.asarray(self._prefilter[:, 0:self.N // 2 + 1])
         self._carray_cp[0, 0:self.N // 2, 0:self.N // 2 + 1] = imf[0:self.N // 2, 0:self.N // 2 + 1]
@@ -477,6 +477,7 @@ class hexSimProcessor:
         img2 = cp.fft.irfft2(self._carray_cp[0, :, :]) * cp.asarray(self._reconfactor[i, :, :])
         self._bigimgstore_cp = self._bigimgstore_cp + cp.fft.irfft2(
             cp.fft.rfft2(img2) * cp.asarray(self._postfilter[:, 0:self.N + 1]))
+        self._imgstore[i, :, :] = img
         return self._bigimgstore_cp
 
     def batchreconstruct(self, img):

@@ -9,7 +9,7 @@ import time
 # import cProfile
 
 plt.close('all')
-isPlot = False
+isPlot = True
 N = 10  # number of iterations
 Nsize = 512
 
@@ -102,9 +102,10 @@ try:
     print(f'CuPy Reconstruction time: {elapsed_time / N:5f}s ')
     if isPlot:
         plt.figure()
-        plt.imshow(imgb.get(), cmap=cm.gray)
+        plt.imshow(imgb.get(), cmap=cm.hot,clim=(0.0, 0.7*imga.max()))
 except AssertionError as error:
     print(error)
+
 
 ''' FFTW '''
 start_time = time.time()
@@ -156,12 +157,12 @@ except AssertionError as error:
 try:
     start_time = time.time()
     for i in range(0, 7 * N):
-        imga = h.reconstructframe_cupy(img1[i % 7, :, :], i % 7)
+        imgb = h.reconstructframe_cupy(img1[i % 7, :, :], i % 7)
     elapsed_time = time.time() - start_time
     print(f'CuPy Reconstructframe time: {elapsed_time / (7 * N):5f}s ')
     if isPlot:
         plt.figure()
-        plt.imshow(imga.get(), cmap=cm.hot, clim=(0.0, 0.7*imga.max()))
+        plt.imshow(imgb.get(), cmap=cm.hot, clim=(0.0, 0.7*imga.max()))
 except AssertionError as error:
     print(error)
 
@@ -229,17 +230,16 @@ try:
 except AssertionError as error:
     print(error)
 
-#''' Batch process GPU '''
-#try:
-    #start_time = time.time()
-    #imgout = h.batchreconstruct_cupy(img2)
-    #elapsed_time = time.time() - start_time
-    #print(f'Batch Reconstruction time(CuPy): {elapsed_time:5f}s ')
-    #if isPlot:
-        #plt.figure()
-        #plt.imshow(imgout[20, :, :].get(), cmap=cm.hot, clim=(0.0, 0.7*imgout[20, :, :].max()))
-#except AssertionError as error:
-    #print(error)
-#
+''' Batch process GPU '''
+try:
+    start_time = time.time()
+    imgout = h.batchreconstruct_cupy(img2)
+    elapsed_time = time.time() - start_time
+    print(f'Batch Reconstruction time(CuPy): {elapsed_time:5f}s ')
+    if isPlot:
+        plt.figure()
+        plt.imshow(imgout[20, :, :].get(), cmap=cm.hot, clim=(0.0, 0.7*imgout[20, :, :].max()))
+except AssertionError as error:
+    print(error)
 
 plt.show()
