@@ -1,13 +1,12 @@
-import numpy as np
-import matplotlib.pyplot as plt
-import scipy
-from scipy.ndimage import gaussian_filter
-from numpy import exp, pi, cos, sqrt, arccos
-from pyczt import pyczt
-import multiprocessing
-import scipy.io
-import time
 import math
+import multiprocessing
+
+import matplotlib.pyplot as plt
+import numpy as np
+import scipy
+import scipy.io
+from numpy import exp, pi, sqrt
+from scipy.ndimage import gaussian_filter
 
 try:
     import pyfftw
@@ -30,7 +29,8 @@ try:
     import cupy as cp
     import cupyx
     import cupyx.scipy.ndimage
-    from cupy_filters import gaussian_filter as gaussian_filter_cupy
+    from cupyx.scipy.ndimage.filters import gaussian_filter as gaussian_filter_cupy
+
     mempool = cp.get_default_memory_pool()
     pinned_mempool = cp.get_default_pinned_memory_pool()
     cupy = True
@@ -103,7 +103,6 @@ class hexSimProcessor:
             self._allocate_arrays()
 
         kr = np.sqrt(self._kx ** 2 + self._ky ** 2, dtype=np.single)
-        # kxbig = np.linspace(-self._dk * self.N, self._dk * self.N - self._dk, 2 * self.N, dtype=np.single)
         kxbig = np.arange(-self._dk * self.N, self._dk * self.N, self._dk, dtype=np.single)
         [kxbig, kybig] = np.meshgrid(kxbig, kxbig)
 
@@ -193,7 +192,7 @@ class hexSimProcessor:
             plt.title('WienerFilter')
             plt.imshow(wienerfilter)
 
-        kmax = 1 * (2 + sqrt(ckx[0] ** 2 + cky[0]**2))
+        kmax = 1 * (2 + sqrt(ckx[0] ** 2 + cky[0] ** 2))
         wienerfilter = mtot * (1 - kr * mtot / kmax) / (wienerfilter * mtot + self.w ** 2)
         self._postfilter = fft.fftshift(wienerfilter)
 
@@ -221,7 +220,7 @@ class hexSimProcessor:
 
         if cupy:
             self._postfilter_cp = cp.asarray(self._postfilter)
- 
+
     def calibrate_fast(self, img):
         if self.N != self._lastN:
             self._allocate_arrays()
@@ -251,8 +250,8 @@ class hexSimProcessor:
 
         for i in range(0, 3):
             ckx[i], cky[i], p[i], ampl[i] = self._findCarrier_cupy(sum_prepared_comp[0, :, :],
-                                                              sum_prepared_comp[i + 1, :, :], mask1)
-        #print(ckx,cky,p,ampl)
+                                                                   sum_prepared_comp[i + 1, :, :], mask1)
+        # print(ckx,cky,p,ampl)
         ph = np.single(2 * pi * self.NA / self.wavelength)
 
         xx = np.arange(-self._dx2 * self.N, self._dx2 * self.N, self._dx2, dtype=np.single)
@@ -311,7 +310,7 @@ class hexSimProcessor:
             plt.title('WienerFilter')
             plt.imshow(wienerfilter)
 
-        kmax = 1 * (2 + sqrt(ckx[0] ** 2 + cky[0]))
+        kmax = 1 * (2 + sqrt(ckx[0] ** 2 + cky[0] ** 2))
         wienerfilter = mtot * (1 - kr * mtot / kmax) / (wienerfilter * mtot + self.w ** 2)
         self._postfilter = fft.fftshift(wienerfilter)
 
@@ -339,7 +338,7 @@ class hexSimProcessor:
 
         if cupy:
             self._postfilter_cp = cp.asarray(self._postfilter)
-            
+
     def reconstruct_fftw(self, img):
         imf = fft.fft2(img) * self._prefilter
         self._carray[:, 0:self.N // 2, 0:self.N // 2] = imf[:, 0:self.N // 2, 0:self.N // 2]
@@ -364,7 +363,6 @@ class hexSimProcessor:
         img2 = np.zeros((2 * self.N, 2 * self.N), dtype=np.single)
         for i in range(0, 7):
             imf = cv2.mulSpectrums(cv2.dft(img[i, :, :]), self._prefilter_ocv, 0)
-            # print(imf.shape)
             self._carray_ocv[0:self.N // 2, 0:self.N] = imf[0:self.N // 2, 0:self.N]
             self._carray_ocv[3 * self.N // 2:2 * self.N, 0:self.N] = imf[self.N // 2:self.N, 0:self.N]
             img2 = cv2.add(img2, cv2.multiply(cv2.idft(self._carray_ocv, flags=cv2.DFT_SCALE | cv2.DFT_REAL_OUTPUT),
@@ -378,9 +376,6 @@ class hexSimProcessor:
         mask = cv2.UMat((self.N // 2, self.N // 2), s=1, type=cv2.CV_8U)
         for i in range(0, 7):
             self._imgstoreU[i] = cv2.UMat(img[i, :, :])
-            # print(self._imgstoreU[i].get().shape)
-            # print(cv2.dft(self._imgstoreU[i],flags=cv2.DFT_COMPLEX_OUTPUT).get().shape)
-            # print(self._prefilter_ocvU.get().shape)
             imf = cv2.multiply(cv2.dft(self._imgstoreU[i], flags=cv2.DFT_COMPLEX_OUTPUT), self._prefilter_ocvU)
             cv2.copyTo(src=cv2.UMat(imf, (0, 0, self.N // 2, self.N // 2)), mask=mask,
                        dst=cv2.UMat(self._carray_ocvU, (0, 0, self.N // 2, self.N // 2)))
@@ -590,7 +585,6 @@ class hexSimProcessor:
                                                                         0:self.N // 2 + 1]
             img2[i:i + 7, :, :] = cp.fft.irfft2(bcarray) * reconfactor_cp
 
-        # self._carray_cp = None
         cp._default_memory_pool.free_all_blocks()
 
         imgout = cp.zeros((nim7, 2 * self.N, 2 * self.N), dtype=np.single)
@@ -625,7 +619,7 @@ class hexSimProcessor:
             plt.figure()
             plt.title('Zoon Find carrier')
             plt.imshow(abs(ixfz))
-        # phase = np.angle(ixfz[pyc, pxc])
+
         kx = Kx[pxc]
         ky = Ky[pyc]
 
@@ -642,7 +636,6 @@ class hexSimProcessor:
             otf_mask & scipy.ndimage.shift(otf_mask, (pyc0 - (self.N // 2 + 1), pxc0 - (self.N // 2 + 1)), order=0))
         band0_common = fft.ifft2(fft.fft2(band0) / otf * otf_mask_for_band_common_freq)
 
-        # xx = np.linspace(-self.N / 2 * self._dx, self.N / 2 * self._dx - self._dx, self.N, dtype=np.single)
         xx = np.arange(-self.N / 2 * self._dx, self.N / 2 * self._dx, self._dx, dtype=np.single)
         phase_shift_to_xpeak = exp(-1j * kx * xx * 2 * pi * self.NA / self.wavelength)
         phase_shift_to_ypeak = exp(-1j * ky * xx * 2 * pi * self.NA / self.wavelength)
@@ -662,15 +655,15 @@ class hexSimProcessor:
         band0 = cp.asarray(band0)
         band1 = cp.asarray(band1)
         mask = cp.asarray(mask)
-        
+
         band = band0 * band1
         ixf = abs(cp.fft.fftshift(cp.fft.fft2(cp.fft.fftshift(band))))
-        pyc0, pxc0 = self._findPeak((ixf - gaussian_filter_cupy(ixf, 20)) * mask)
-        # print(pyc0,pxc0)
-        # print(cp.asarray(self._kx)[pyc0, pxc0])
-        ixfz, Kx, Ky = self._zoomf_cupy(band, self.N, cp.asarray(self._kx)[pyc0, pxc0], cp.asarray(self._ky)[pyc0, pxc0], 100, self._dk * self.N)
-        pyc, pxc = self._findPeak(abs(ixfz))
-        # phase = np.angle(ixfz[pyc, pxc])
+        pyc0, pxc0 = self._findPeak_cupy((ixf - gaussian_filter_cupy(ixf, 20)) * mask)
+
+        ixfz, Kx, Ky = self._zoomf_cupy(band, self.N, cp.asarray(self._kx)[pyc0, pxc0],
+                                        cp.asarray(self._ky)[pyc0, pxc0], 100, self._dk * self.N)
+        pyc, pxc = self._findPeak_cupy(abs(ixfz))
+
         kx = Kx[pxc]
         ky = Ky[pyc]
 
@@ -684,7 +677,8 @@ class hexSimProcessor:
 
         otf_mask = (kr > otf_exclude_min_radius) & (kr < otf_exclude_max_radius)
         otf_mask_for_band_common_freq = cp.fft.fftshift(
-            otf_mask & cupyx.scipy.ndimage.shift(otf_mask, (pyc0 - (self.N // 2 + 1), pxc0 - (self.N // 2 + 1)), order=0))
+            otf_mask & cupyx.scipy.ndimage.shift(otf_mask, (pyc0 - (self.N // 2 + 1), pxc0 - (self.N // 2 + 1)),
+                                                 order=0))
         band0_common = cp.fft.ifft2(cp.fft.fft2(band0) / otf * otf_mask_for_band_common_freq)
 
         xx = cp.linspace(-self.N / 2 * self._dx, self.N / 2 * self._dx - self._dx, self.N, dtype=np.single)
@@ -701,14 +695,17 @@ class hexSimProcessor:
         ampl = cp.abs(cross_corr_result) * 2
         phase = cp.angle(cross_corr_result)
         return kx.get(), ky.get(), phase.get(), ampl.get()
-    
+
     def _findPeak(self, in_array):
+        return np.unravel_index(np.argmax(in_array, axis=None), in_array.shape)
+
+    def _findPeak_cupy(self, in_array):
         xp = cp.get_array_module(in_array)
         return xp.unravel_index(xp.argmax(in_array, axis=None), in_array.shape)
 
     def _zoomf(self, in_arr, M, kx, ky, mag, kmax):
-        resy = pyczt(in_arr, M, exp(-1j * 2 * pi / (mag * M)), exp(-1j * pi * (1 / mag - 2 * ky / kmax)))
-        res = pyczt(resy.T, M, exp(-1j * 2 * pi / (mag * M)), exp(-1j * pi * (1 / mag - 2 * kx / kmax))).T
+        resy = self._pyczt(in_arr, M, exp(-1j * 2 * pi / (mag * M)), exp(-1j * pi * (1 / mag - 2 * ky / kmax)))
+        res = self._pyczt(resy.T, M, exp(-1j * 2 * pi / (mag * M)), exp(-1j * pi * (1 / mag - 2 * kx / kmax))).T
         kyarr = -kmax * (1 / mag - 2 * ky / kmax) / 2 + (kmax / (mag * (M))) * np.arange(0, M)
         kxarr = -kmax * (1 / mag - 2 * kx / kmax) / 2 + (kmax / (mag * (M))) * np.arange(0, M)
         dim = np.shape(in_arr)
@@ -716,10 +713,12 @@ class hexSimProcessor:
         res = res * (exp(1j * (kyarr) * dim[0] * pi / kmax)[:, np.newaxis])
         res = res * (exp(1j * (kxarr) * dim[0] * pi / kmax)[np.newaxis, :])
         return res, kxarr, kyarr
-    
+
     def _zoomf_cupy(self, in_arr, M, kx, ky, mag, kmax):
-        resy = self._pyczt_cupy(in_arr, M, cp.exp(-1j * 2 * pi / (mag * M)), cp.exp(-1j * pi * (1 / mag - 2 * ky / kmax)))
-        res = self._pyczt_cupy(resy.T, M, cp.exp(-1j * 2 * pi / (mag * M)), cp.exp(-1j * pi * (1 / mag - 2 * kx / kmax))).T
+        resy = self._pyczt_cupy(in_arr, M, cp.exp(-1j * 2 * pi / (mag * M)),
+                                cp.exp(-1j * pi * (1 / mag - 2 * ky / kmax)))
+        res = self._pyczt_cupy(resy.T, M, cp.exp(-1j * 2 * pi / (mag * M)),
+                               cp.exp(-1j * pi * (1 / mag - 2 * kx / kmax))).T
         kyarr = -kmax * (1 / mag - 2 * ky / kmax) / 2 + (kmax / (mag * (M))) * cp.arange(0, M)
         kxarr = -kmax * (1 / mag - 2 * kx / kmax) / 2 + (kmax / (mag * (M))) * cp.arange(0, M)
         dim = cupyx.scipy.sparse.csr_matrix.get_shape(in_arr)
@@ -727,7 +726,7 @@ class hexSimProcessor:
         res = res * (cp.exp(1j * (kyarr) * dim[0] * pi / kmax)[:, cp.newaxis])
         res = res * (cp.exp(1j * (kxarr) * dim[0] * pi / kmax)[cp.newaxis, :])
         return res, kxarr, kyarr
-    
+
     def _att(self, kr):
         atf = (1 - self.beta * exp(-kr ** 2 / (2 * self.alpha ** 2)))
         return atf
@@ -753,56 +752,145 @@ class hexSimProcessor:
         krf = kr.flatten()[mf]
         otff[mf] = self._tf(krf)
         return otff.reshape(kr.shape)
-    
-    def _pyczt_cupy(self, x, k=None, w=None, a=None):
+
+    def _pyczt(self, x, k=None, w=None, a=None):
+        # Chirp z-transform ported from Matlab implementation (see comment below)
+        # By Mark Neil Apr 2020
+        # %CZT  Chirp z-transform.
+        # %   G = CZT(X, M, W, A) is the M-element z-transform of sequence X,
+        # %   where M, W and A are scalars which specify the contour in the z-plane
+        # %   on which the z-transform is computed.  M is the length of the transform,
+        # %   W is the complex ratio between points on the contour, and A is the
+        # %   complex starting point.  More explicitly, the contour in the z-plane
+        # %   (a spiral or "chirp" contour) is described by
+        # %       z = A * W.^(-(0:M-1))
+        # %
+        # %   The parameters M, W, and A are optional; their default values are
+        # %   M = length(X), W = exp(-j*2*pi/M), and A = 1.  These defaults
+        # %   cause CZT to return the z-transform of X at equally spaced points
+        # %   around the unit circle, equivalent to FFT(X).
+        # %
+        # %   If X is a matrix, the chirp z-transform operation is applied to each
+        # %   column.
+        # %
+        # %   See also FFT, FREQZ.
+        #
+        # %   Author(s): C. Denham, 1990.
+        # %   	   J. McClellan, 7-25-90, revised
+        # %   	   C. Denham, 8-15-90, revised
+        # %   	   T. Krauss, 2-16-93, updated help
+        # %   Copyright 1988-2002 The MathWorks, Inc.
+        # %       $Revision: 1.7.4.1 $  $Date: 2007/12/14 15:04:15 $
+        #
+        # %   References:
+        # %     [1] Oppenheim, A.V. & R.W. Schafer, Discrete-Time Signal
+        # %         Processing,  Prentice-Hall, pp. 623-628, 1989.
+        # %     [2] Rabiner, L.R. and B. Gold, Theory and Application of
+        # %         Digital Signal Processing, Prentice-Hall, Englewood
+        # %         Cliffs, New Jersey, pp. 393-399, 1975.
+
         olddim = x.ndim
-    
+
         if olddim == 1:
-            x = x[:, cp.newaxis]
-    
+            x = x[:, np.newaxis]
+
         (m, n) = x.shape
         oldm = m
-    
+
         if m == 1:
             x = x.transpose()
             (m, n) = x.shape
-    
+
+        if k is None:
+            k = len(x)
+        if w is None:
+            w = np.exp(-1j * 2 * math.pi / k)
+        if a is None:
+            a = 1.
+
+        # %------- Length for power-of-two fft.
+
+        nfft = int(2 ** np.ceil(math.log2(abs(m + k - 1))))
+
+        # %------- Premultiply data.
+
+        kk = np.arange(-m + 1, max(k, m))[:, np.newaxis]
+        kk2 = (kk ** 2) / 2
+        ww = w ** kk2  # <----- Chirp filter is 1./ww
+        nn = np.arange(0, m)[:, np.newaxis]
+        aa = a ** (-nn)
+        aa = aa * ww[m + nn - 1, 0]
+        # y = (x * aa)
+        y = (x * aa).astype(np.complex64)
+        # print(y.dtype)
+        # %------- Fast convolution via FFT.
+
+        fy = fft.fft(y, nfft, axis=0)
+        fv = fft.fft(1 / ww[0: k - 1 + m], nfft, axis=0)  # <----- Chirp filter.
+        fy = fy * fv
+        g = fft.ifft(fy, axis=0)
+
+        # %------- Final multiply.
+
+        g = g[m - 1:m + k - 1, :] * ww[m - 1:m + k - 1]
+
+        if oldm == 1:
+            g = g.transpose()
+
+        if olddim == 1:
+            g = g.squeeze()
+
+        return g
+
+    def _pyczt_cupy(self, x, k=None, w=None, a=None):
+        olddim = x.ndim
+
+        if olddim == 1:
+            x = x[:, cp.newaxis]
+
+        (m, n) = x.shape
+        oldm = m
+
+        if m == 1:
+            x = x.transpose()
+            (m, n) = x.shape
+
         if k is None:
             k = len(x)
         if w is None:
             w = cp.exp(-1j * 2 * pi / k)
         if a is None:
             a = 1.
-    
+
         # %------- Length for power-of-two fft.
-    
-        nfft = int(2**cp.ceil(cp.log2(abs(m+k-1))))
-    
+
+        nfft = int(2 ** cp.ceil(cp.log2(abs(m + k - 1))))
+
         # %------- Premultiply data.
-    
-        kk = cp.arange(-m+1, max(k, m))[:, cp.newaxis]
+
+        kk = cp.arange(-m + 1, max(k, m))[:, cp.newaxis]
         kk2 = (kk ** 2) / 2
-        ww = w ** kk2   # <----- Chirp filter is 1./ww
+        ww = w ** kk2  # <----- Chirp filter is 1./ww
         nn = cp.arange(0, m)[:, cp.newaxis]
         aa = a ** (-nn)
-        aa = aa * ww[m+nn-1, 0]
+        aa = aa * ww[m + nn - 1, 0]
         y = (x * aa).astype(np.complex64)
-    
+
         # %------- Fast convolution via FFT.
-    
+
         fy = cp.fft.fft(y, nfft, axis=0)
-        fv = cp.fft.fft(1 / ww[0: k-1+m], nfft, axis=0)   # <----- Chirp filter.
+        fv = cp.fft.fft(1 / ww[0: k - 1 + m], nfft, axis=0)  # <----- Chirp filter.
         fy = fy * fv
         g = cp.fft.ifft(fy, axis=0)
-    
+
         # %------- Final multiply.
-    
-        g = g[m-1:m+k-1, :] * ww[m-1:m+k-1]
-    
+
+        g = g[m - 1:m + k - 1, :] * ww[m - 1:m + k - 1]
+
         if oldm == 1:
             g = g.transpose()
-    
+
         if olddim == 1:
             g = g.squeeze()
-    
+
         return g
