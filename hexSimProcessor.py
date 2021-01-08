@@ -1,11 +1,9 @@
-import math
 import multiprocessing
-
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy
 import scipy.io
-from numpy import exp, pi, sqrt
+from numpy import exp, pi, sqrt,log2,arccos
 from scipy.ndimage import gaussian_filter
 
 try:
@@ -80,7 +78,7 @@ class hexSimProcessor:
         self._carray1 = np.zeros((7, 2 * self.N, self.N + 1), dtype=np.complex64)
 
         self._imgbig = np.zeros((7, 2 * self.N, 2 * self.N), dtype=np.single)
-        self._imgbig1 = np.zeros((7, 2 * self.N, 2 * self.N), dtype=np.single)
+        # self._imgbig1 = np.zeros((7, 2 * self.N, 2 * self.N), dtype=np.single)
         self._bigimgstore = np.zeros((2 * self.N, 2 * self.N), dtype=np.single)
         if cupy:
             self._prefilter_cp = cp.zeros((self.N, self.N), dtype=np.single)
@@ -102,7 +100,7 @@ class hexSimProcessor:
         if self.N != self._lastN:
             self._allocate_arrays()
 
-        kr = np.sqrt(self._kx ** 2 + self._ky ** 2, dtype=np.single)
+        kr = sqrt(self._kx ** 2 + self._ky ** 2, dtype=np.single)
         kxbig = np.arange(-self._dk * self.N, self._dk * self.N, self._dk, dtype=np.single)
         [kxbig, kybig] = np.meshgrid(kxbig, kxbig)
 
@@ -225,7 +223,7 @@ class hexSimProcessor:
         if self.N != self._lastN:
             self._allocate_arrays()
 
-        kr = np.sqrt(self._kx ** 2 + self._ky ** 2, dtype=np.single)
+        kr = sqrt(self._kx ** 2 + self._ky ** 2, dtype=np.single)
         kxbig = np.linspace(-self._dk * self.N, self._dk * self.N - self._dk, 2 * self.N, dtype=np.single)
         [kxbig, kybig] = np.meshgrid(kxbig, kxbig)
 
@@ -532,8 +530,10 @@ class hexSimProcessor:
             nim = nim + 14 - r
         nim7 = nim // 7
         imf = cp.fft.rfft2(img) * cp.asarray(self._prefilter[:, 0:self.N // 2 + 1])
+
         img = None
         cp._default_memory_pool.free_all_blocks()
+
         if self.debug:
             print(mempool.used_bytes())
             print(mempool.total_bytes())
@@ -546,9 +546,12 @@ class hexSimProcessor:
             bcarray[:, 3 * self.N // 2:2 * self.N, 0:self.N // 2 + 1] = imf[i:i + 7, self.N // 2:self.N,
                                                                         0:self.N // 2 + 1]
             img2[i:i + 7, :, :] = cp.fft.irfft2(bcarray) * reconfactor_cp
+
+        reconfactor_cp = None
         imf = None
         bcarray = None
         cp._default_memory_pool.free_all_blocks()
+
         if self.debug:
             print(mempool.used_bytes())
             print(mempool.total_bytes())
@@ -560,6 +563,7 @@ class hexSimProcessor:
             print(mempool.used_bytes())
             print(mempool.total_bytes())
         res = cp.fft.irfft2(cp.fft.rfft2(img3) * cp.asarray(self._postfilter[:, :self.N + 1]))
+        img3 = None
         return res
 
     def batchreconstructcompact_cupy(self, img):
@@ -585,6 +589,8 @@ class hexSimProcessor:
                                                                         0:self.N // 2 + 1]
             img2[i:i + 7, :, :] = cp.fft.irfft2(bcarray) * reconfactor_cp
 
+        bcarray = None
+        reconfactor_cp = None
         cp._default_memory_pool.free_all_blocks()
 
         imgout = cp.zeros((nim7, 2 * self.N, 2 * self.N), dtype=np.single)
@@ -596,10 +602,14 @@ class hexSimProcessor:
         imgout[:, 0:self.N, self.N:2 * self.N] = cp.fft.irfft(imf, nim7, 0)
         imf = cp.fft.rfft(img2[:, self.N:2 * self.N, self.N:2 * self.N], nim, 0)[:nim7 // 2 + 1, :, :]
         imgout[:, self.N:2 * self.N, self.N:2 * self.N] = cp.fft.irfft(imf, nim7, 0)
+
         imf = None
         cp._default_memory_pool.free_all_blocks()
 
         res = cp.fft.irfft2(cp.fft.rfft2(imgout) * cp.asarray(self._postfilter[:, :self.N + 1]))
+        img2 = None
+        imgout = None
+        cp._default_memory_pool.free_all_blocks()
         return res
 
     def _findCarrier(self, band0, band1, mask):
@@ -673,7 +683,7 @@ class hexSimProcessor:
         kr = cp.sqrt(cp.asarray(self._kx) ** 2 + cp.asarray(self._ky) ** 2)
 
         m = (kr < 2)
-        otf = cp.fft.fftshift(self._tfm(kr, m) + (1 - m))
+        otf = cp.fft.fftshift(self._tfm_cupy(kr, m) + (1 - m))
 
         otf_mask = (kr > otf_exclude_min_radius) & (kr < otf_exclude_max_radius)
         otf_mask_for_band_common_freq = cp.fft.fftshift(
@@ -740,11 +750,23 @@ class hexSimProcessor:
         return atff.reshape(kr.shape)
 
     def _tf(self, kr):
+        otf = (1 / pi * (arccos(kr / 2) - kr / 2 * sqrt(1 - kr ** 2 / 4)))
+        return otf
+
+    def _tf_cupy(self, kr):
         xp = cp.get_array_module(kr)
         otf = (1 / pi * (xp.arccos(kr / 2) - kr / 2 * xp.sqrt(1 - kr ** 2 / 4)))
         return otf
 
     def _tfm(self, kr, mask):
+        otf = np.zeros_like(kr).flatten()
+        mf = mask.flatten()
+        otff = otf.flatten()
+        krf = kr.flatten()[mf]
+        otff[mf] = self._tf(krf)
+        return otff.reshape(kr.shape)
+
+    def _tfm_cupy(self, kr, mask):
         xp = cp.get_array_module(kr)
         otf = xp.zeros_like(kr).flatten()
         mf = mask.flatten()
@@ -804,13 +826,13 @@ class hexSimProcessor:
         if k is None:
             k = len(x)
         if w is None:
-            w = np.exp(-1j * 2 * math.pi / k)
+            w = exp(-1j * 2 * pi / k)
         if a is None:
             a = 1.
 
         # %------- Length for power-of-two fft.
 
-        nfft = int(2 ** np.ceil(math.log2(abs(m + k - 1))))
+        nfft = int(2 ** np.ceil(log2(abs(m + k - 1))))
 
         # %------- Premultiply data.
 
