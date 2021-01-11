@@ -2,6 +2,7 @@ import numpy as np
 import math
 
 try :
+    import multiprocessing
     import pyfftw
     import pyfftw.interfaces.numpy_fft as fft
     pyfftw.config.NUM_THREADS = multiprocessing.cpu_count()
