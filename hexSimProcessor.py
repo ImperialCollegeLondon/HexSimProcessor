@@ -35,7 +35,7 @@ except:
     cupy = False
 
 
-class hexSimProcessor:
+class HexSimProcessor:
     N = 256  # points to use in fft
     pixelsize = 6.5  # camera pixel size, um
     magnification = 40  # objective magnification

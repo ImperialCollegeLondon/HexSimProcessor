@@ -1,5 +1,5 @@
-# from HexSimProcessorFast import *
-from hexSimProcessor import *
+import os
+
 from pathlib import Path
 import matplotlib.cm as cm
 import matplotlib.pyplot as plt
@@ -8,6 +8,7 @@ import numpy as np
 import time
 
 # import cProfile
+from hexSimProcessor import HexSimProcessor
 
 plt.close('all')
 isPlot = True
@@ -16,16 +17,20 @@ Nsize = 512
 
 ''' Initialize '''
 # h=HexSimProcessor
-h = hexSimProcessor()
+h = HexSimProcessor()
 h.debug = False
 h.cleanup = True
 h.N = (Nsize // 2) * 2
 
 ''' Read Image '''
-data_folder = Path("C:/Users/hgong/Documents/simDATA/")
-filename = str(data_folder / "SIMdata_2019-11-05_15-21-42/SIMdata_2019-11-05_15-21-42.tif")
-filename = "./SIMdata_2019-11-05_15-21-42.tif"
-img1 = tif.imread(filename)
+data_folder = Path(os.path.dirname(__file__))
+filename  = "./SIMdata_2019-11-05_15-21-42.tif"
+filepath = os.path.join(data_folder, filename)
+# print(data_folder)
+# quit()
+# filename = str(data_folder / "SIMdata_2019-11-05_15-21-42/SIMdata_2019-11-05_15-21-42.tif")
+# filename = "./SIMdata_2019-11-05_15-21-42.tif"
+img1 = tif.imread(filepath)
 
 if Nsize != 512:
     img1 = np.single(img1[:, 256 - Nsize // 2: 256 + Nsize // 2, 256 - Nsize // 2: 256 + Nsize // 2])
@@ -170,8 +175,11 @@ except AssertionError as error:
     print(error)
 
 ''' Read image stack'''
-filename = str("./Raw_img_stack_512_inplane.tif")
-img2 = tif.imread(filename)
+data_folder = Path(os.path.dirname(__file__))
+filename = "./Raw_img_stack_512_inplane.tif"
+filepath = os.path.join(data_folder, filename)
+
+img2 = tif.imread(filepath)
 if Nsize != 512:
     img2 = np.single(img2[:, 256 - Nsize // 2: 256 + Nsize // 2, 256 - Nsize // 2: 256 + Nsize // 2])
 else:
@@ -237,12 +245,12 @@ except AssertionError as error:
     print(error)
 
 ''' Beads test '''
+data_folder = Path(os.path.dirname(__file__))
+filename = "SIMdata_2019-11-05_15-45-12.tif"
+filepath = os.path.join(data_folder, filename)
+imgbeads = np.single(tif.imread(filepath))
 
-dir = "/Users/maan/Imperial College London/Guo, Wenjun - 3-beam hex SIM image data/"
-filename = dir + "hexSIM data in use/SIMdata_2019-11-05_15-45-12/SIMdata_2019-11-05_15-45-12.tif"
-imgbeads = np.single(tif.imread(filename))
-
-hb = hexSimProcessor()
+hb = HexSimProcessor()
 hb.N = 512
 hb.magnification = 40
 hb.NA = 0.75
