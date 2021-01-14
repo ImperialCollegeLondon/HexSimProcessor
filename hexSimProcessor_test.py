@@ -41,6 +41,15 @@ if isPlot:
     plt.figure()
     plt.imshow(np.sum(img1, 0), cmap=cm.gray)
 
+''' Calibration Cupy'''
+try:
+    start_time = time.time()
+    h.calibrate_cupy(img1)
+    elapsed_time = time.time() - start_time
+    print(f'Fast Calibration time: {elapsed_time:5f}s ')
+except AssertionError as error:
+    print(error)
+
 ''' Calibration '''
 start_time = time.time()
 h.calibrate(img1)
@@ -56,25 +65,15 @@ for i in range(0, 10):
 elapsed_time = time.time() - start_time
 print(f'FFTW Reconstruction time: {elapsed_time / 10:5f}s ')
 
-''' FFTW '''
+''' rFFTW '''
 start_time = time.time()
 for i in range(0, N):
     imga = h.reconstruct_rfftw(img1)
 elapsed_time = time.time() - start_time
-print(f'FFTW Reconstruction time: {elapsed_time / N:5f}s ')
-if isPlot:
-    plt.figure()
-    plt.imshow(imga, cmap=cm.hot, clim=(0.0, 0.7*imga.max()))
-
-''' rFTTFW '''
-start_time = time.time()
-for i in range(0, N):
-    imgb = h.reconstruct_rfftw(img1)
-elapsed_time = time.time() - start_time
 print(f'rFFTW Reconstruction time: {elapsed_time / N:5f}s ')
 if isPlot:
     plt.figure()
-    plt.imshow(imgb, cmap=cm.hot, clim=(0.0, 0.7*imga.max()))
+    plt.imshow(imga, cmap=cm.hot, clim=(0.0, 0.7 * imga.max()))
 
 ''' ocv '''
 try:
@@ -85,7 +84,7 @@ try:
     print(f'ocv Reconstruction time: {elapsed_time / N:5f}s ')
     if isPlot:
         plt.figure()
-    plt.imshow(imgb, cmap=cm.hot, clim=(0.0, 0.7*imga.max()))
+    plt.imshow(imgb, cmap=cm.hot, clim=(0.0, 0.7 * imga.max()))
 except AssertionError as error:
     print(error)
 
@@ -98,7 +97,7 @@ try:
     print(f'ocvU Reconstruction time: {elapsed_time / N:5f}s ')
     if isPlot:
         plt.figure()
-        plt.imshow(imgb.get(), cmap=cm.hot, clim=(0.0, 0.7*imga.max()))
+        plt.imshow(imgb.get(), cmap=cm.hot, clim=(0.0, 0.7 * imga.max()))
 except AssertionError as error:
     print(error)
 
@@ -123,7 +122,7 @@ elapsed_time = time.time() - start_time
 print(f'FFTW Reconstructframe time: {elapsed_time / (7 * N):5f}s ')
 if isPlot:
     plt.figure()
-    plt.imshow(imga, cmap=cm.hot, clim=(0.0, 0.7*imga.max()))
+    plt.imshow(imga, cmap=cm.hot, clim=(0.0, 0.7 * imga.max()))
 
 ''' rFFTW '''
 start_time = time.time()
@@ -133,7 +132,7 @@ elapsed_time = time.time() - start_time
 print(f'rFFTW Reconstructframe time: {elapsed_time / (7 * N):5f}s ')
 if isPlot:
     plt.figure()
-    plt.imshow(imga, cmap=cm.hot, clim=(0.0, 0.7*imga.max()))
+    plt.imshow(imga, cmap=cm.hot, clim=(0.0, 0.7 * imga.max()))
 
 ''' ocv '''
 try:
@@ -144,7 +143,7 @@ try:
     print(f'ocv Reconstruct frame time: {elapsed_time / (7 * N):5f}s ')
     if isPlot:
         plt.figure()
-        plt.imshow(imga, cmap=cm.hot, clim=(0.0, 0.7*imga.max()))
+        plt.imshow(imga, cmap=cm.hot, clim=(0.0, 0.7 * imga.max()))
 except AssertionError as error:
     print(error)
 
@@ -157,7 +156,7 @@ try:
     print(f'ocvU Reconstruct frame time: {elapsed_time / (7 * N):5f}s ')
     if isPlot:
         plt.figure()
-        plt.imshow(imga.get(), cmap=cm.hot, clim=(0.0, 0.7*imga.get().max()))
+        plt.imshow(imga.get(), cmap=cm.hot, clim=(0.0, 0.7 * imga.get().max()))
 except AssertionError as error:
     print(error)
 
@@ -165,12 +164,12 @@ except AssertionError as error:
 try:
     start_time = time.time()
     for i in range(0, 7 * N):
-        imga = h.reconstructframe_cupy(img1[i % 7, :, :], i % 7)
+        imgb = h.reconstructframe_cupy(img1[i % 7, :, :], i % 7)
     elapsed_time = time.time() - start_time
     print(f'CuPy Reconstructframe time: {elapsed_time / (7 * N):5f}s ')
     if isPlot:
         plt.figure()
-        plt.imshow(imga.get(), cmap=cm.hot, clim=(0.0, 0.7*imga.max()))
+        plt.imshow(imgb.get(), cmap=cm.hot, clim=(0.0, 0.7 * imgb.get().max()))
 except AssertionError as error:
     print(error)
 
@@ -187,31 +186,46 @@ else:
 
 start_time = time.time()
 h.cleanup = False
-h.calibrate(img2[140:147, :, :])
-elapsed_time = time.time() - start_time
-print(f'Calibration time: {elapsed_time:5f}s ')
+
+''' Calibration cupy'''
+try:
+    h.calibrate_cupy(img2[140:147, :, :])
+    elapsed_time = time.time() - start_time
+    print(f'Calibration time: {elapsed_time:5f}s ')
+    start_time = time.time()
+    h.calibrate_cupy(img2[140:147, :, :])
+    elapsed_time = time.time() - start_time
+    print(f'Cupy Calibration time: {elapsed_time:5f}s ')
+except AssertionError as error:
+    print(error)
+    start_time = time.time()
+    # cProfile.run("h.calibrate(img2[140:147, :, :])", sort = 'tottime')
+    h.calibrate(img2[140:147, :, :])
+    elapsed_time = time.time() - start_time
+    print(f'Calibration time: {elapsed_time:5f}s ')
+
 imga = h.reconstruct_rfftw(img2[140:147, :, :])
 if isPlot:
     plt.figure()
-    plt.imshow(imga, cmap=cm.hot, clim=(0.0, 0.7*imga.max()))
+    plt.imshow(imga, cmap=cm.hot, clim=(0.0, 0.7 * imga.max()))
 
 start_time = time.time()
 imgouta = h.batchreconstruct(img2)
 elapsed_time = time.time() - start_time
-print(f'Reconstruction time: {elapsed_time:5f}s ')
+print(f'Batch Reconstruction time (CPU): {elapsed_time:5f}s ')
 
 if isPlot:
     plt.figure()
-    plt.imshow(imgouta[20, :, :], cmap=cm.hot, clim=(0.0, 0.7*imgouta[20, :, :].max()))
+    plt.imshow(imgouta[20, :, :], cmap=cm.hot, clim=(0.0, 0.7 * imgouta[20, :, :].max()))
 
 start_time = time.time()
 imgoutb = h.batchreconstructcompact(img2)
 elapsed_time = time.time() - start_time
-print(f'Reconstruction time: {elapsed_time:5f}s ')
+print(f'Batch Reconstruction compact time (CPU): {elapsed_time:5f}s ')
 
 if isPlot:
     plt.figure()
-    plt.imshow(imgoutb[20, :, :], cmap=cm.hot, clim=(0.0, 0.7*imgoutb[20, :, :].max()))
+    plt.imshow(imgoutb[20, :, :], cmap=cm.hot, clim=(0.0, 0.7 * imgoutb[20, :, :].max()))
 
 if isPlot:
     plt.figure()
@@ -240,7 +254,7 @@ try:
     print(f'Batch Reconstruction time(CuPy): {elapsed_time:5f}s ')
     if isPlot:
         plt.figure()
-        plt.imshow(imgout[20, :, :].get(), cmap=cm.hot, clim=(0.0, 0.7*imgout[20, :, :].max()))
+        plt.imshow(imgout[20, :, :].get(), cmap=cm.hot, clim=(0.0, 0.7 * imgout[20, :, :].max()))
 except AssertionError as error:
     print(error)
 
@@ -271,6 +285,5 @@ try:
         plt.imshow(imgb, cmap=cm.hot, clim=(0.0, 0.25 * imgb.max()))
 except AssertionError as error:
     print(error)
-
 
 plt.show()
