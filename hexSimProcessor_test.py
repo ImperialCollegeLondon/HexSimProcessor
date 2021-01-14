@@ -37,10 +37,13 @@ if isPlot:
     plt.imshow(np.sum(img1, 0), cmap=cm.gray)
 
 ''' Calibration Cupy'''
-start_time = time.time()
-h.calibrate_fast(img1)
-elapsed_time = time.time() - start_time
-print(f'Fast Calibration time: {elapsed_time:5f}s ')
+try:
+    start_time = time.time()
+    h.calibrate_cupy(img1)
+    elapsed_time = time.time() - start_time
+    print(f'Fast Calibration time: {elapsed_time:5f}s ')
+except AssertionError as error:
+    print(error)
 
 ''' Calibration '''
 start_time = time.time()
@@ -176,15 +179,22 @@ else:
 start_time = time.time()
 h.cleanup = False
 
-h.calibrate_fast(img2[140:147, :, :])
-elapsed_time = time.time() - start_time
-print(f'Calibration time: {elapsed_time:5f}s ')
-
-''' Calibration Cupy'''
-start_time = time.time()
-h.calibrate_fast(img2[140:147, :, :])
-elapsed_time = time.time() - start_time
-print(f'Fast Calibration time: {elapsed_time:5f}s ')
+''' Calibration cupy'''
+try:
+    h.calibrate_cupy(img2[140:147, :, :])
+    elapsed_time = time.time() - start_time
+    print(f'Calibration time: {elapsed_time:5f}s ')
+    start_time = time.time()
+    h.calibrate_cupy(img2[140:147, :, :])
+    elapsed_time = time.time() - start_time
+    print(f'Cupy Calibration time: {elapsed_time:5f}s ')
+except AssertionError as error:
+    print(error)
+    start_time = time.time()
+    # cProfile.run("h.calibrate(img2[140:147, :, :])", sort = 'tottime')
+    h.calibrate(img2[140:147, :, :])
+    elapsed_time = time.time() - start_time
+    print(f'Calibration time: {elapsed_time:5f}s ')
 
 imga = h.reconstruct_rfftw(img2[140:147, :, :])
 if isPlot:

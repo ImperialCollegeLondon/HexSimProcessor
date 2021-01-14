@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import scipy
 import scipy.io
-from numpy import exp, pi, sqrt,log2,arccos
+from numpy import exp, pi, sqrt, log2, arccos
 from scipy.ndimage import gaussian_filter
 
 try:
@@ -63,7 +63,6 @@ class hexSimProcessor:
         self._res = self.wavelength / (2 * self.NA)
         self._oversampling = self._res / self._dx
         self._dk = self._oversampling / (self.N / 2)  # Sampling in frequency plane
-        # self._kx = np.linspace(-self._dk * self.N / 2, self._dk * self.N / 2 - self._dk, self.N, dtype=np.single)
         self._kx = np.arange(-self._dk * self.N / 2, self._dk * self.N / 2, self._dk, dtype=np.single)
         [self._kx, self._ky] = np.meshgrid(self._kx, self._kx)
         self._dx2 = self._dx / 2
@@ -219,12 +218,13 @@ class hexSimProcessor:
         if cupy:
             self._postfilter_cp = cp.asarray(self._postfilter)
 
-    def calibrate_fast(self, img):
+    def calibrate_cupy(self, img):
+        assert cupy, "No CuPy present"
         if self.N != self._lastN:
             self._allocate_arrays()
 
         kr = sqrt(self._kx ** 2 + self._ky ** 2, dtype=np.single)
-        kxbig = np.linspace(-self._dk * self.N, self._dk * self.N - self._dk, 2 * self.N, dtype=np.single)
+        kxbig = np.arange(-self._dk * self.N, self._dk * self.N, self._dk, dtype=np.single)
         [kxbig, kybig] = np.meshgrid(kxbig, kxbig)
 
         '''Separate bands into DC and 3 high frequency bands'''
@@ -691,7 +691,7 @@ class hexSimProcessor:
                                                  order=0))
         band0_common = cp.fft.ifft2(cp.fft.fft2(band0) / otf * otf_mask_for_band_common_freq)
 
-        xx = cp.linspace(-self.N / 2 * self._dx, self.N / 2 * self._dx - self._dx, self.N, dtype=np.single)
+        xx = cp.arange(-self.N / 2 * self._dx, self.N / 2 * self._dx, self._dx, dtype=np.single)
         phase_shift_to_xpeak = cp.exp(-1j * kx * xx * 2 * pi * self.NA / self.wavelength)
         phase_shift_to_ypeak = cp.exp(-1j * ky * xx * 2 * pi * self.NA / self.wavelength)
 
